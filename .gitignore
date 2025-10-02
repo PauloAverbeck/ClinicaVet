@@ -1,0 +1,5 @@
+.idea
+target
+src/main/frontend/generated
+.gitignore
+node_modules

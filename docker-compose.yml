@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:18
+    container_name: postgres18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: vet
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: paverbeck@t3w.io
+      PGADMIN_DEFAULT_PASSWORD: test
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

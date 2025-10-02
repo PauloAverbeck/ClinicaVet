@@ -1,7 +1,7 @@
 package com.example.application.examplefeature.ui;
 
 import com.example.application.base.ui.component.ViewToolbar;
-import com.example.application.examplefeature.Task;
+import com.example.application.examplefeature.TaskEntity;
 import com.example.application.examplefeature.TaskService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -33,7 +33,7 @@ class TaskListView extends Main {
     final TextField description;
     final DatePicker dueDate;
     final Button createBtn;
-    final Grid<Task> taskGrid;
+    final Grid<TaskEntity> taskGrid;
 
     TaskListView(TaskService taskService) {
         this.taskService = taskService;
@@ -41,7 +41,7 @@ class TaskListView extends Main {
         description = new TextField();
         description.setPlaceholder("What do you want to do?");
         description.setAriaLabel("Task description");
-        description.setMaxLength(Task.DESCRIPTION_MAX_LENGTH);
+        description.setMaxLength(100);
         description.setMinWidth("20em");
 
         dueDate = new DatePicker();
@@ -57,7 +57,7 @@ class TaskListView extends Main {
 
         taskGrid = new Grid<>();
         taskGrid.setItems(query -> taskService.list(toSpringPageRequest(query)).stream());
-        taskGrid.addColumn(Task::getDescription).setHeader("Description");
+        taskGrid.addColumn(TaskEntity::getDescription).setHeader("Description");
         taskGrid.addColumn(task -> Optional.ofNullable(task.getDueDate()).map(dateFormatter::format).orElse("Never"))
                 .setHeader("Due Date");
         taskGrid.addColumn(task -> dateTimeFormatter.format(task.getCreationDate())).setHeader("Creation Date");

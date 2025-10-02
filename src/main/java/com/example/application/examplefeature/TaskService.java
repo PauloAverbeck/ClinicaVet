@@ -5,7 +5,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -23,13 +22,15 @@ public class TaskService {
         if ("fail".equals(description)) {
             throw new RuntimeException("This is for testing the error handler");
         }
-        var task = new Task(description, Instant.now());
-        task.setDueDate(dueDate);
-        taskRepository.saveAndFlush(task);
+
+        taskRepository.saveAndFlush(
+                new TaskEntity()
+                        .setDescription(description)
+                        .setDueDate(dueDate));
     }
 
     @Transactional(readOnly = true)
-    public List<Task> list(Pageable pageable) {
+    public List<TaskEntity> list(Pageable pageable) {
         return taskRepository.findAllBy(pageable).toList();
     }
 

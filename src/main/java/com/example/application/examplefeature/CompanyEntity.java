@@ -12,7 +12,7 @@ public class CompanyEntity extends AbstractEntity {
     private String documentType;
 
 
-    @Column(name = "document", nullable = false, length = 150)
+    @Column(name = "document", nullable = false, length = 150, unique = true)
     private String document;
 
     @Column(name = "name", nullable = false, length = 150)

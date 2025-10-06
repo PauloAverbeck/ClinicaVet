@@ -3,9 +3,6 @@ package com.example.application.examplefeature;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import org.jspecify.annotations.Nullable;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "company")

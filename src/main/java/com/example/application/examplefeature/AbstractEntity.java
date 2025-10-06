@@ -8,18 +8,33 @@ import java.time.LocalDateTime;
 public abstract class AbstractEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "creation_date", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "creation_date", nullable = false, updatable = false)
     private LocalDateTime creationDate;
 
-    @Column(name = "update_date", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+    @Column(name = "update_date")
     private LocalDateTime updateDate;
 
     @Version
     private Integer version;
+
+    @PrePersist
+    protected void onCreate() {
+        creationDate = LocalDateTime.now();
+        this.updateDate = this.creationDate;
+        if (this.version == null) {
+            this.version = 0;
+        }
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updateDate = LocalDateTime.now();
+    }
+
 
     public Long getId() {
         return id;

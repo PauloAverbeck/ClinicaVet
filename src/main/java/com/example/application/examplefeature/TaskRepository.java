@@ -1,3 +1,4 @@
+/*
 package com.example.application.examplefeature;
 
 import org.springframework.data.domain.Pageable;
@@ -11,3 +12,4 @@ interface TaskRepository extends JpaRepository<TaskEntity, Long>, JpaSpecificati
     // Page performs both a select and a count query.
     Slice<TaskEntity> findAllBy(Pageable pageable);
 }
+*/

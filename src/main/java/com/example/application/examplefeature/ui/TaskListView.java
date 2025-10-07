@@ -1,3 +1,4 @@
+/*
 package com.example.application.examplefeature.ui;
 
 import com.example.application.base.ui.component.ViewToolbar;
@@ -81,3 +82,4 @@ class TaskListView extends Main {
     }
 
 }
+*/

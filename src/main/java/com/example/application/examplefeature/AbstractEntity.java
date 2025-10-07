@@ -1,40 +1,13 @@
 package com.example.application.examplefeature;
 
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
-@MappedSuperclass
+
 public abstract class AbstractEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
-
-    @Column(name = "creation_date", nullable = false, updatable = false)
     private LocalDateTime creationDate;
-
-    @Column(name = "update_date")
     private LocalDateTime updateDate;
-
-    @Version
     private Integer version;
-
-    @PrePersist
-    protected void onCreate() {
-        creationDate = LocalDateTime.now();
-        this.updateDate = this.creationDate;
-        if (this.version == null) {
-            this.version = 0;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updateDate = LocalDateTime.now();
-    }
-
 
     public Long getId() {
         return id;
@@ -70,5 +43,19 @@ public abstract class AbstractEntity {
     public AbstractEntity setVersion(Integer version) {
         this.version = version;
         return this;
+    }
+
+    /* Helpers para DAO */
+    public void markNew() {
+        LocalDateTime now = LocalDateTime.now();
+        this.creationDate = now;
+        this.updateDate = now;
+        if (this.version == null) this.version = 0;
+    }
+
+    public void markUpdated() {
+        this.updateDate = LocalDateTime.now();
+        if (this.version == null) this.version = 0;
+        this.version += 1;
     }
 }

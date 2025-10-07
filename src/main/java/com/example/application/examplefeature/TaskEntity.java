@@ -1,24 +1,19 @@
+/*
 package com.example.application.examplefeature;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDate;
 
-@Entity
-@Table(name = "task")
-public class TaskEntity extends AbstractEntity {
 
-    @Column(name = "description", nullable = false, length = 300)
+
+public class TaskEntity extends AbstractEntity {
     private String description;
 
-    @Column(name = "due_date")
     @Nullable
     private LocalDate dueDate;
 
-    protected TaskEntity() { // To keep Hibernate happy
+    public TaskEntity() { // To keep Hibernate happy
     }
 
     public String getDescription() {
@@ -61,3 +56,4 @@ public class TaskEntity extends AbstractEntity {
         return getClass().hashCode();
     }
 }
+*/

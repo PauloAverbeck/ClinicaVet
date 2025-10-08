@@ -34,8 +34,8 @@ public class AppUserService {
         dao.update(user);
     }
 
-    //SAVE ?
-    //DELETE ?
+    //TODO SAVE ?
+    //TODO DELETE ?
 
     public Optional<AppUser> findById(long id) throws SQLException {
         return dao.findById(id);
@@ -51,5 +51,14 @@ public class AppUserService {
 
     private static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    public void requestSignup(String trim) {
+        //TODO -> implementar logica (gerar senha provisoria -> gravar hash provisorio -> enviar email com link de confirmacao)
+
+    }
+
+    public void confirmSignup(String trim, String tempPassword) {
+        //TODO -> confirmar email -> mover hash para passwordHash -> limpar hash provisorio -> preencher emailConfirmationTime
     }
 }

@@ -65,12 +65,12 @@ public class LandingView extends Main {
 
         //Button AppUserView
         Button btUsers = new Button("Users", new Icon(VaadinIcon.USERS));
-        btUsers.addClickListener(e -> UI.getCurrent().navigate("AppUserView.class")); //Retirar Aspas quando estiver pronto
+        btUsers.addClickListener(e -> UI.getCurrent().navigate(AppUserView.class));
         btUsers.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        //Button CompanyView
-        //Outros botoes...
-        //Spaceholder
+        //TODO Button CompanyView
+        //TODO Outros botoes...
+        //TODO Spaceholder
 
         //Button AnimalsView
         Button btAnimals = new Button("Animals", new Icon(VaadinIcon.PIGGY_BANK));

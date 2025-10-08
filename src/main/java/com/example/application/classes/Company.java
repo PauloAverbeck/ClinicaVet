@@ -1,4 +1,4 @@
-package com.example.application.examplefeature;
+package com.example.application.classes;
 
 import java.util.Objects;
 

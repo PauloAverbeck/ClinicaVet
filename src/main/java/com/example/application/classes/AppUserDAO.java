@@ -1,4 +1,4 @@
-package com.example.application.examplefeature;
+package com.example.application.classes;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;

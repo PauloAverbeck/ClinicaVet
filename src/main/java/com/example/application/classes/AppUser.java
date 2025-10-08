@@ -1,4 +1,4 @@
-package com.example.application.examplefeature;
+package com.example.application.classes;
 
 import org.jspecify.annotations.Nullable;
 import java.time.LocalDateTime;

@@ -1,4 +1,4 @@
-package com.example.application.examplefeature.ui;
+package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.ViewToolbar;

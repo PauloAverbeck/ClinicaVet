@@ -1,6 +1,5 @@
-package com.example.application.examplefeature;
+package com.example.application.classes;
 
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;

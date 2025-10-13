@@ -12,6 +12,7 @@ import java.util.Optional;
 
 @Repository
 public class AppUserRepository {
+
     private final DataSource dataSource;
 
     @Autowired
@@ -19,21 +20,31 @@ public class AppUserRepository {
         this.dataSource = dataSource;
     }
 
-    public long insert(AppUser user) throws SQLException {
-        final String sql = """
-                INSERT INTO app_user (email, name, password_hash, prov_pw_hash, email_conf_time, version)
-                VALUES (?, ?, ?, ?, ?, ?)
-                RETURNING id, creation_date, update_date, version
-                """;
+    /* CREATE */
+     /** Autocadastro: insere usuário com (opcional) senha provisória já hasheada. */
 
+    public long insertWithProvisional(AppUser user) throws SQLException {
+        final String sql = """
+            INSERT INTO app_user (email, name, password_hash, prov_pw_hash, email_conf_time)
+            VALUES (?, ?, ?, ?, ?)
+            RETURNING id, creation_date, update_date, version
+            """;
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            setLocalDateTimeOrNull(ps, 1, user.getEmailConfirmationTime());
-            ps.setString(2, user.getEmail());
-            ps.setString(3, user.getName());
-            ps.setString(4, user.getPasswordHash());
-            setStringOrNull(ps, 5, user.getProvisionalPasswordHash());
+            ps.setString(1, user.getEmail());
+            ps.setString(2, user.getName());
+
+            String pwd = user.getPasswordHash();
+            String prov = user.getProvisionalPasswordHash();
+            if (pwd == null && prov == null) {
+                throw new SQLException("Ao menos um hash de senha deve ser fornecido (password_hash ou prov_pw_hash).");
+            }
+            if (pwd == null) pwd = prov;
+
+            ps.setString(3, pwd);
+            setStringOrNull(ps, 4, prov);
+            setLocalDateTimeOrNull(ps, 5, user.getEmailConfirmationTime());
 
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
@@ -47,42 +58,7 @@ public class AppUserRepository {
         }
     }
 
-    public void update(AppUser user) throws SQLException {
-        final String sql = """
-                    UPDATE app_user
-                        SET email = ?,
-                            name = ?,
-                            password_hash = ?,
-                            prov_pw_hash = ?,
-                            email_conf_time = ?,
-                            update_date = ?,
-                            version = version + 1
-                    WHERE id = ? AND version = ?
-                    RETURNING update_date, version
-                    """;
-
-        try (Connection con = dataSource.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            setLocalDateTimeOrNull(ps, 1, user.getEmailConfirmationTime());
-            ps.setString(2, user.getEmail());
-            ps.setString(3, user.getName());
-            ps.setString(4, user.getPasswordHash());
-            setStringOrNull(ps, 5, user.getProvisionalPasswordHash());
-
-            ps.setLong(6, user.getId());
-            ps.setInt(7, user.getVersion());
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    user.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-                    user.setVersion(rs.getInt("version"));
-                } else {
-                    throw new SQLException("Conflito de versão para AppUser com id: " + user.getId());
-                }
-            }
-        }
-    }
+    /* READ */
 
     public Optional<AppUser> findById(long id) throws SQLException {
         final String sql = baseSelect() + " WHERE id = ?";
@@ -90,11 +66,8 @@ public class AppUserRepository {
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(map(rs));
-                } else {
-                    return Optional.empty();
-                }
+                if (rs.next()) return Optional.of(map(rs));
+                return Optional.empty();
             }
         }
     }
@@ -105,11 +78,19 @@ public class AppUserRepository {
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(map(rs));
-                } else {
-                    return Optional.empty();
-                }
+                if (rs.next()) return Optional.of(map(rs));
+                return Optional.empty();
+            }
+        }
+    }
+
+    public boolean existsByEmail(String email) throws SQLException {
+        final String sql = "SELECT 1 FROM app_user WHERE email = ? LIMIT 1";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
             }
         }
     }
@@ -127,13 +108,154 @@ public class AppUserRepository {
         }
     }
 
-    /* Helpers */
+    /* UPDATE (basico) */
+    /**
+     * Atualiza apenas dados não sensíveis (email, nome).
+     * Não toca em senhas nem em email_conf_time.
+     * Usa optimistic locking por version.
+     */
+    public void updateDadosBasicos(AppUser user) throws SQLException {
+        final String sql = """
+            UPDATE app_user
+               SET email = ?,
+                   name  = ?,
+                   version = version + 1
+             WHERE id = ? AND version = ?
+             RETURNING update_date, version
+            """;
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, user.getEmail());
+            ps.setString(2, user.getName());
+            ps.setLong(3, user.getId());
+            ps.setInt(4, user.getVersion());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    user.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
+                    user.setVersion(rs.getInt("version"));
+                } else {
+                    throw new SQLException("Conflito de versão para AppUser id=" + user.getId());
+                }
+            }
+        }
+    }
+
+    /* UPDATE (senhas e confirmação) */
+    /** Define uma nova senha provisória (esqueci minha senha). Zera a confirmação. */
+    public void setProvisional(long userId, String provisionalHash) throws SQLException {
+        final String sql = """
+            UPDATE app_user
+               SET prov_pw_hash = ?,
+                   email_conf_time = NULL,
+                   version = version + 1
+             WHERE id = ?
+             RETURNING update_date, version
+            """;
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, provisionalHash);
+            ps.setLong(2, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("Falha ao definir senha provisória para AppUser id=" + userId);
+                }
+            }
+        }
+    }
+
+    /**
+     * Promove a senha provisória para oficial e confirma o email.
+     * (Usado no primeiro login/fluxo de confirmação.)
+     */
+    public void promoteProvisionalToOfficial(long userId) throws SQLException {
+        final String sql = """
+            UPDATE app_user
+               SET password_hash   = prov_pw_hash,
+                   prov_pw_hash    = NULL,
+                   email_conf_time = NOW(),
+                   version = version + 1
+             WHERE id = ?
+               AND prov_pw_hash IS NOT NULL
+             RETURNING update_date, version
+            """;
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setLong(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("Não havia senha provisória para promover (AppUser id=" + userId + ")");
+                }
+            }
+        }
+    }
+
+    /** Atualiza a senha oficial (não mexe na provisória). */
+    public void updatePassword(long userId, String newHash, int currentVersion) throws SQLException {
+        final String sql = """
+            UPDATE app_user
+               SET password_hash = ?,
+                   version = version + 1
+             WHERE id = ? AND version = ?
+             RETURNING update_date, version
+            """;
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, newHash);
+            ps.setLong(2, userId);
+            ps.setInt(3, currentVersion);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("Conflito de versão ao atualizar senha (AppUser id=" + userId + ")");
+                }
+            }
+        }
+    }
+
+    /* SAVE & DELETE */
+    /**
+     * Salva um usuário (insert ou update) de forma unificada.
+     * Se o ID for nulo (0), insere; senão, atualiza dados básicos.
+     */
+    public void save(AppUser user) throws SQLException {
+        if (user.getId() == 0) {
+            insertWithProvisional(user);
+        } else {
+            updateDadosBasicos(user);
+        }
+    }
+
+    /**
+     * Remove permanentemente um usuário pelo ID.
+     * Hard delete.
+     */
+    public void deleteById(long id) throws SQLException {
+        final String sql = "DELETE FROM app_user WHERE id = ?";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            int rows = ps.executeUpdate();
+            if (rows == 0) {
+                throw new SQLException("Nenhum AppUser encontrado para exclusão. ID=" + id);
+            }
+        }
+    }
+
+    /* HELPERS */
+
     private static String baseSelect() {
         return """
-                SELECT id, creation_date, update_date, version,
-                       email, name, password_hash, prov_pw_hash, email_conf_time
-                FROM app_user
-                """;
+            SELECT id, creation_date, update_date, version,
+                   email, name, password_hash, prov_pw_hash, email_conf_time
+              FROM app_user
+            """;
     }
 
     private static void setLocalDateTimeOrNull(PreparedStatement ps, int index, LocalDateTime localDateTime) throws SQLException {
@@ -161,17 +283,15 @@ public class AppUserRepository {
         user.setEmail(rs.getString("email"));
         user.setName(rs.getString("name"));
         user.setPasswordHash(rs.getString("password_hash"));
+
         String provisionalPasswordHash = rs.getString("prov_pw_hash");
         if (rs.wasNull()) {
             provisionalPasswordHash = null;
         }
         user.setProvisionalPasswordHash(provisionalPasswordHash);
+
         Timestamp emailConfirmationTimeTs = rs.getTimestamp("email_conf_time");
-        if (emailConfirmationTimeTs != null) {
-            user.setEmailConfirmationTime(emailConfirmationTimeTs.toLocalDateTime());
-        } else {
-            user.setEmailConfirmationTime(null);
-        }
+        user.setEmailConfirmationTime(emailConfirmationTimeTs != null ? emailConfirmationTimeTs.toLocalDateTime() : null);
         return user;
     }
 }

@@ -9,8 +9,8 @@ import java.util.Optional;
 
 @Service
 public class AppUserService {
-    private final AppUserDAO dao;
-    public AppUserService(AppUserDAO dao) {
+    private final AppUserRepository dao;
+    public AppUserService(AppUserRepository dao) {
         this.dao = dao;
     }
 

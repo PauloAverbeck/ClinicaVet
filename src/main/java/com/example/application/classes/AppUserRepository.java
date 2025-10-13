@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public class AppUserDAO {
+public class AppUserRepository {
     private final DataSource dataSource;
 
     @Autowired
-    public AppUserDAO(DataSource dataSource) {
+    public AppUserRepository(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 

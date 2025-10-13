@@ -2,10 +2,10 @@
 
 ## Cronograma
 - **Semana 1 - Autenticação e base organizacional**
-- [ ] V1: Criar tabela de usuários/empresas/vínculos;
-- [ ] Configurar Datasource e Flyway;
-- [ ] Implementar SignUp -> email com senha provisória;
-- [ ] Implementar Primeiro Login (confirmação) -> promove senha provisória para oficial;
+- [x] V1: Criar tabela de usuários/empresas/vínculos;
+- [x] Configurar Datasource e Flyway;
+- [x] Implementar SignUp -> email com senha provisória;
+- [x] Implementar Primeiro Login (confirmação) -> promove senha provisória para oficial;
 - [ ] Telas Vaadin: SignUp, Login/Confirm, ForgotPassword (gera nova provisória);
 - [ ] Serviço de validação de documento (CPF/CNPJ/PASSAPORTE) básico.
 #

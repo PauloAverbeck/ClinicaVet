@@ -15,6 +15,31 @@ public class AppUserService {
     private final AppUserRepository repo;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
+    public enum LoginResult {
+        CONFIRMED,
+        LOGGED_IN,
+        INVALID
+    }
+
+    public LoginResult loginOrConfirm(String email, String plainPassword) throws SQLException {
+        AppUser user = repo.findByEmail(normalizeEmail(email))
+                .orElse(null);
+        if (user == null) return LoginResult.INVALID;
+
+        if (user.getProvisionalPasswordHash() != null) {
+            if (passwordEncoder.matches(plainPassword, user.getProvisionalPasswordHash())) {
+                repo.promoteProvisionalToOfficial(user.getId());
+                return LoginResult.CONFIRMED;
+            }
+        }
+        String official = user.getPasswordHash();
+        if (official != null && passwordEncoder.matches(plainPassword, official)) {
+            return LoginResult.LOGGED_IN;
+        }
+
+        return LoginResult.INVALID;
+    }
+
     public AppUserService(AppUserRepository repo) {
         this.repo = repo;
     }

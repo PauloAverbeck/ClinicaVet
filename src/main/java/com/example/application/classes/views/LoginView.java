@@ -5,6 +5,7 @@ import com.example.application.classes.AppUserService.LoginResult;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
@@ -87,6 +88,12 @@ public class LoginView extends VerticalLayout {
             ex.printStackTrace();
             Notification.show("Falha ao autenticar. Tente novamente.", 4000, Notification.Position.MIDDLE);
         }
+    }
+
+    Anchor forgotPasswordLink() {
+        Anchor a = new Anchor("forgot", "Esqueci minha senha");
+        a.getElement().setProperty("title", "Ir para a tela de recuperação de senha");
+        return a;
     }
 
     private static String val(String v) { return v == null ? null : v.trim(); }

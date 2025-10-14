@@ -1,8 +1,9 @@
 package com.example.application.classes;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.sql.SQLException;
@@ -13,7 +14,13 @@ import java.util.Optional;
 @Service
 public class AppUserService {
     private final AppUserRepository repo;
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder) {
+        this.repo = repo;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public enum LoginResult {
         CONFIRMED,
@@ -167,6 +174,7 @@ public class AppUserService {
      * - Grava seu hash em prov_pw_hash e zera email_conf_time
      * - Retorna a senha provisória para envio por e-mail/SMS
      */
+    @Transactional
     public void forgotPassword(String email) throws SQLException {
         AppUser user = repo.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
@@ -177,7 +185,28 @@ public class AppUserService {
         repo.setProvisional(user.getId(), provisionalHash);
     }
 
-    public void resetPassword(String token, String pass1) {
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        try {
+            // 1) valida token
+            var userIdOpt = repo.findIdByResetToken(token);
+            if (userIdOpt.isEmpty()) {
+                throw new IllegalArgumentException("Token inválido");
+            }
+            long userId = userIdOpt.get();
+
+            // 2) valida expiração
+            var expiry = repo.getResetTokenExpiry(userId);
+            if (expiry == null || expiry.isBefore(java.time.LocalDateTime.now())) {
+                throw new IllegalArgumentException("Token expirado");
+            }
+
+            // 3) codifica e atualiza + limpa token
+            String encoded = passwordEncoder.encode(newPassword);
+            repo.clearTokenAndUpdatePassword(userId, encoded);
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao redefinir senha", e);
+        }
     }
 
     /* UTILITY */

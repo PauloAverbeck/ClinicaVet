@@ -63,21 +63,37 @@ public class LandingView extends Main {
         row.setSpacing(true);
         row.addClassNames(LumoUtility.Gap.MEDIUM);
 
-        //Button AppUserView
-        Button btUsers = new Button("Users", new Icon(VaadinIcon.USERS));
-        btUsers.addClickListener(e -> UI.getCurrent().navigate(AppUserView.class));
-        btUsers.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        Button signUpBtn = new Button("Sign Up", new Icon(VaadinIcon.USER_CHECK));
+        signUpBtn.addClickListener(e -> UI.getCurrent().navigate(SignUpView.class));
+        signUpBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        //TODO Button CompanyView
-        //TODO Outros botoes...
+        Button forgotPasswordBtn = new Button("Forgot Password", new Icon(VaadinIcon.KEY));
+        forgotPasswordBtn.addClickListener(e -> UI.getCurrent().navigate(ForgotPasswordView.class));
+        forgotPasswordBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button resetPasswordBtn = new Button("Reset Password", new Icon(VaadinIcon.REFRESH));
+        resetPasswordBtn.addClickListener(e -> UI.getCurrent().navigate(ResetPasswordView.class));
+        resetPasswordBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button loginBtn = new Button("Login", new Icon(VaadinIcon.SIGN_IN));
+        loginBtn.addClickListener(e -> UI.getCurrent().navigate(LoginView.class));
+        loginBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button usersBtn = new Button("Users", new Icon(VaadinIcon.USERS));
+        usersBtn.addClickListener(e -> UI.getCurrent().navigate(AppUserView.class));
+        usersBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button companyBtn = new Button("Company", new Icon(VaadinIcon.BUILDING));
+        companyBtn.addClickListener(e -> UI.getCurrent().navigate("CompanyView.class")); //TODO
+        companyBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button animalsBtn = new Button("Animals", new Icon(VaadinIcon.PIGGY_BANK));
+        animalsBtn.addClickListener(e -> UI.getCurrent().navigate("AnimalsView.class")); //TODO
+        animalsBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
         //TODO Spaceholder
 
-        //Button AnimalsView
-        Button btAnimals = new Button("Animals", new Icon(VaadinIcon.PIGGY_BANK));
-        btAnimals.addClickListener(e -> UI.getCurrent().navigate("AnimalsView.class")); //Retirar Aspas quando estiver pronto
-        btAnimals.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-        row.add(btUsers, btAnimals);
+        row.add(signUpBtn, forgotPasswordBtn, resetPasswordBtn, loginBtn, usersBtn, companyBtn, animalsBtn);
         row.setJustifyContentMode(FlexComponent.JustifyContentMode.START);
         return row;
     }

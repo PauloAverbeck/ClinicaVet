@@ -29,7 +29,6 @@ public class ForgotPasswordView extends VerticalLayout {
     private final EmailField email = new EmailField("E-mail");
     private final Button enviarBtn = new Button("Enviar instruções");
     private final Button voltarLoginBtn = new Button("Voltar para o login");
-    private final Anchor loginLinkAnchor = new Anchor("login", "Ir para o login");
 
     @Autowired
     public ForgotPasswordView(AppUserService appUserService) {
@@ -61,11 +60,10 @@ public class ForgotPasswordView extends VerticalLayout {
                 new FormLayout.ResponsiveStep("0", 1)
         );
 
-        final var actions = new VerticalLayout(enviarBtn, loginLinkAnchor, voltarLoginBtn);
+        final var actions = new VerticalLayout(enviarBtn, voltarLoginBtn);
         actions.setPadding(false);
         actions.setSpacing(true);
         actions.setWidth(400, Unit.PIXELS);
-        loginLinkAnchor.getElement().setProperty("title", "Ir para a tela de login");
 
         add(title, subtitle, form, actions);
     }

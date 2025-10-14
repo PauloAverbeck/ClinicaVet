@@ -44,7 +44,6 @@ public class ForgotPasswordView extends VerticalLayout {
 
         email.setClearButtonVisible(true);
         email.setWidth(400, Unit.PIXELS);
-        email.setPattern("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
         email.setErrorMessage("Informe um e-mail válido");
         email.setRequiredIndicatorVisible(true);
 

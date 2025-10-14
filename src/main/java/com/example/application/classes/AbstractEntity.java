@@ -44,18 +44,4 @@ public abstract class AbstractEntity {
         this.version = version;
         return this;
     }
-
-    /* Helpers para DAO */
-    public void markNew() {
-        LocalDateTime now = LocalDateTime.now();
-        this.creationDate = now;
-        this.updateDate = now;
-        if (this.version == null) this.version = 0;
-    }
-
-    public void markUpdated() {
-        this.updateDate = LocalDateTime.now();
-        if (this.version == null) this.version = 0;
-        this.version += 1;
-    }
 }

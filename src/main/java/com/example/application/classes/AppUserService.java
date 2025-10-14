@@ -167,7 +167,7 @@ public class AppUserService {
      * - Grava seu hash em prov_pw_hash e zera email_conf_time
      * - Retorna a senha provisória para envio por e-mail/SMS
      */
-    public String forgotPassword(String email) throws SQLException {
+    public void forgotPassword(String email) throws SQLException {
         AppUser user = repo.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
 
@@ -175,7 +175,9 @@ public class AppUserService {
         String provisionalHash = passwordEncoder.encode(provisionalPlain);
 
         repo.setProvisional(user.getId(), provisionalHash);
-        return provisionalPlain;
+    }
+
+    public void resetPassword(String token, String pass1) {
     }
 
     /* UTILITY */

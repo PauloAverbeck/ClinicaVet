@@ -1,0 +1,103 @@
+package com.example.application.classes.views;
+
+import com.example.application.classes.AppUserService;
+import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.router.*;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
+import org.springframework.beans.factory.annotation.Autowired;
+
+@PageTitle("Redefinir senha")
+@Route("reset")
+@AnonymousAllowed
+public class ResetPasswordView extends VerticalLayout implements HasUrlParameter<String> {
+
+    private final AppUserService appUserService;
+    private String token;
+
+    private final PasswordField newPasswordField = new PasswordField("Nova senha");
+    private final PasswordField confirmPasswordField = new PasswordField("Confirmar nova senha");
+    private final Button saveBtn = new Button("Salvar nova senha");
+
+    @Autowired
+    public ResetPasswordView(AppUserService appUserService) {
+        this.appUserService = appUserService;
+
+        setSizeFull();
+        setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.CENTER);
+        getStyle().set("padding", "var(--lumo-space-l)");
+
+        add(
+                new H1("Redefinir senha"),
+                new Paragraph("Defina uma nova senha para sua conta.")
+        );
+
+        newPasswordField.setRevealButtonVisible(true);
+        confirmPasswordField.setRevealButtonVisible(true);
+
+        newPasswordField.setMinLength(8);
+        newPasswordField.setErrorMessage("Mínimo de 8 caracteres");
+
+        saveBtn.addClickShortcut(Key.ENTER);
+        saveBtn.addClickListener(e -> onSubmit());
+
+        add(newPasswordField, confirmPasswordField, saveBtn);
+    }
+
+    @Override
+    public void setParameter(BeforeEvent event, @OptionalParameter String param) {
+        final var qp = event.getLocation().getQueryParameters().getParameters();
+        this.token = qp.getOrDefault("token", param != null ? java.util.List.of(param) : java.util.List.of()).stream().findFirst().orElse(null);
+        if (this.token == null || this.token.isBlank()) {
+            Notification.show("Token ausente ou inválido.", 5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            getUI().ifPresent(ui -> ui.navigate("login"));
+        }
+    }
+
+    private void onSubmit() {
+        final String pass1 = java.util.Optional.ofNullable(newPasswordField.getValue()).map(String::trim).orElse("");
+        final String pass2 = java.util.Optional.ofNullable(confirmPasswordField.getValue()).map(String::trim).orElse("");
+
+        if (token == null || token.isBlank()) {
+            Notification.show("Token ausente ou inválido.", 5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            return;
+        }
+        if (pass1.length() < 8) {
+            newPasswordField.setInvalid(true);
+            newPasswordField.setErrorMessage("A nova senha deve ter no mínimo 8 caracteres.");
+            newPasswordField.focus();
+            return;
+        }
+        if (!pass1.equals(pass2)) {
+            confirmPasswordField.setInvalid(true);
+            confirmPasswordField.setErrorMessage("As senhas não conferem.");
+            confirmPasswordField.focus();
+            return;
+        }
+
+        saveBtn.setEnabled(false);
+        saveBtn.setText("Salvando...");
+
+        try {
+            appUserService.resetPassword(token, pass1);
+            Notification.show("Senha redefinida com sucesso. Você já pode entrar com a nova senha.", 5000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            getUI().ifPresent(ui -> ui.navigate("login"));
+        } catch (Exception ex) {
+            Notification.show("Erro ao redefinir senha: " + ex.getMessage(), 6000, Notification.Position.MIDDLE)
+                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } finally {
+            saveBtn.setEnabled(true);
+            saveBtn.setText("Salvar nova senha");
+        }
+    }
+}

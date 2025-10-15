@@ -176,7 +176,7 @@ public class AppUserRepository {
             UPDATE app_user
                SET password_hash   = prov_pw_hash,
                    prov_pw_hash    = NULL,
-                   email_conf_time = NOW(),
+                   email_conf_time = CURRENT_TIMESTAMP,
                    version = version + 1
              WHERE id = ?
                AND prov_pw_hash IS NOT NULL
@@ -200,7 +200,8 @@ public class AppUserRepository {
         final String sql = """
             UPDATE app_user
                SET password_hash = ?,
-                   version = version + 1
+                   version = version + 1,
+                   update_date = CURRENT_TIMESTAMP
              WHERE id = ? AND version = ?
              RETURNING update_date, version
             """;
@@ -216,6 +217,23 @@ public class AppUserRepository {
                     throw new SQLException("Conflito de versão ao atualizar senha (AppUser id=" + userId + ")");
                 }
             }
+        }
+    }
+
+    public void updateOfficialPasswordAndClearProvisional(long userId, String newHash) throws SQLException {
+        String sql = """
+        UPDATE app_user
+           SET password_hash = ?,
+               prov_pw_hash = NULL,
+               update_date = CURRENT_TIMESTAMP,
+               version = version + 1
+         WHERE id = ?
+        """;
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newHash);
+            ps.setLong(2, userId);
+            ps.executeUpdate();
         }
     }
 
@@ -271,9 +289,9 @@ public class AppUserRepository {
     public void setResetToken(long userId, String token, LocalDateTime expiry) throws SQLException {
         final String sql = """
             UPDATE app_user
-             SET reset_token=?,
-                 reset_token_expiry=?
-             WHERE id=?
+             SET reset_token = ?,
+                 reset_token_expiry = ?
+             WHERE id = ?
             """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -288,7 +306,7 @@ public class AppUserRepository {
         final String sql = """
             SELECT reset_token_expiry
              FROM app_user
-             WHERE id=?
+             WHERE id = ?
             """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -306,11 +324,12 @@ public class AppUserRepository {
     public void clearTokenAndUpdatePassword(long userId, String encodedPassword) throws SQLException {
         final String sql = """
             UPDATE app_user
-             SET password_hash=?,
-                 reset_token=NULL,
-                 reset_token_expiry=NULL,
+             SET password_hash = ?,
+                 reset_token = NULL,
+                 reset_token_expiry = NULL,
+                 update_date = CURRENT_TIMESTAMP,
                  version = version +1
-             WHERE id=?
+             WHERE id = ?
             """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -324,7 +343,7 @@ public class AppUserRepository {
         final String sql = """
             SELECT reset_token
              FROM app_user
-             WHERE id=?
+             WHERE id = ?
             """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {

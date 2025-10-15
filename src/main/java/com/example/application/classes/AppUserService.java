@@ -47,10 +47,6 @@ public class AppUserService {
         return LoginResult.INVALID;
     }
 
-    public AppUserService(AppUserRepository repo) {
-        this.repo = repo;
-    }
-
     /* CREATE / UPDATE / DELETE */
     /**
      * Cria um usuário.
@@ -168,6 +164,15 @@ public class AppUserService {
         return true;
     }
 
+    @Transactional
+    public void setPasswordAfterConfirm(String email, String newPassword) throws SQLException {
+        ensureStrongPassword(newPassword);
+        AppUser user = repo.findByEmail(normalizeEmail(email))
+                .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
+        String encoded = passwordEncoder.encode(newPassword.trim());
+        repo.updateOfficialPasswordAndClearProvisional(user.getId(), encoded);
+    }
+
     /**
      * Esqueci minha senha:
      * - Gera nova provisória
@@ -188,6 +193,12 @@ public class AppUserService {
     @Transactional
     public void resetPassword(String token, String newPassword) {
         try {
+            // validações de entrada
+            if (token == null || token.isBlank()) {
+                throw new IllegalArgumentException("Token inválido");
+            }
+            validateNewPassword(newPassword);
+
             // 1) valida token
             var userIdOpt = repo.findIdByResetToken(token);
             if (userIdOpt.isEmpty()) {
@@ -209,7 +220,48 @@ public class AppUserService {
         }
     }
 
+    private static void validateNewPassword(String pwd) {
+        if (pwd == null || pwd.isBlank()) {
+            throw new IllegalArgumentException("Senha inválida");
+        }
+        boolean lenOK = pwd.length() >= 8;
+        boolean up = pwd.chars().anyMatch(Character::isUpperCase);
+        boolean low = pwd.chars().anyMatch(Character::isLowerCase);
+        boolean dig = pwd.chars().anyMatch(Character::isDigit);
+        if (!(lenOK && up && low && dig)) {
+            throw new IllegalArgumentException("Senha fraca");
+        }
+    }
+
     /* UTILITY */
+    /**
+     * Verifica se a senha é forte o suficiente.
+     * Critérios:
+     * - Não nula
+     * - Pelo menos 8 caracteres
+     * - Pelo menos 1 maiúscula, 1 minúscula e 1 dígito
+     * - Não apenas espaços em branco
+     *
+     * Lança IllegalArgumentException se a senha for fraca ou inválida.
+     */
+    private static void ensureStrongPassword(String password) {
+        if (password == null) {
+            throw new IllegalArgumentException("Senha inválida");
+        }
+        String pwd = password.trim();
+        if (pwd.length() < 8) {
+            throw new IllegalArgumentException("Senha fraca");
+        }
+        if (!pwd.matches(".*[A-Z].*") ||
+                !pwd.matches(".*[a-z].*") ||
+                !pwd.matches(".*\\d.*")) {
+            throw new IllegalArgumentException("Senha fraca");
+        }
+        if (pwd.isBlank()) {
+            throw new IllegalArgumentException("Senha inválida");
+        }
+    }
+
     private static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }

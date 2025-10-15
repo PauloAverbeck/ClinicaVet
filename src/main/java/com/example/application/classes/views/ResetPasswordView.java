@@ -14,6 +14,10 @@ import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 @PageTitle("Redefinir senha")
 @Route("reset")
 @AnonymousAllowed
@@ -31,7 +35,9 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
         this.appUserService = appUserService;
 
         setSizeFull();
+        setJustifyContentMode(JustifyContentMode.CENTER);
         setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.CENTER);
+        setSpacing(true);
         getStyle().set("padding", "var(--lumo-space-l)");
 
         add(
@@ -41,7 +47,6 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
 
         newPasswordField.setRevealButtonVisible(true);
         confirmPasswordField.setRevealButtonVisible(true);
-
         newPasswordField.setMinLength(8);
         newPasswordField.setErrorMessage("Mínimo de 8 caracteres");
 
@@ -52,10 +57,10 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
     }
 
     @Override
-    public void setParameter(BeforeEvent event, @OptionalParameter String param) {
-        final var qp = event.getLocation().getQueryParameters().getParameters();
-        this.token = qp.getOrDefault("token", param != null ? java.util.List.of(param) : java.util.List.of()).stream().findFirst().orElse(null);
-        if (this.token == null || this.token.isBlank()) {
+    public void setParameter(BeforeEvent event, @OptionalParameter String ignored) {
+        var params = event.getLocation().getQueryParameters().getParameters();
+        this.token = params.getOrDefault("token", List.of("")).stream().findFirst().orElse("");
+        if (token == null || token.isBlank()) {
             Notification.show("Token ausente ou inválido.", 5000, Notification.Position.MIDDLE)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             getUI().ifPresent(ui -> ui.navigate("login"));
@@ -63,8 +68,8 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
     }
 
     private void onSubmit() {
-        final String pass1 = java.util.Optional.ofNullable(newPasswordField.getValue()).map(String::trim).orElse("");
-        final String pass2 = java.util.Optional.ofNullable(confirmPasswordField.getValue()).map(String::trim).orElse("");
+        final String pass1 = Optional.ofNullable(newPasswordField.getValue()).map(String::trim).orElse("");
+        final String pass2 = Optional.ofNullable(confirmPasswordField.getValue()).map(String::trim).orElse("");
 
         if (token == null || token.isBlank()) {
             Notification.show("Token ausente ou inválido.", 5000, Notification.Position.MIDDLE)
@@ -85,6 +90,7 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
         }
 
         saveBtn.setEnabled(false);
+        saveBtn.setDisableOnClick(true);
         saveBtn.setText("Salvando...");
 
         try {

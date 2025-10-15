@@ -10,11 +10,12 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AppUserService {
     private final AppUserRepository repo;
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder) {
@@ -47,7 +48,8 @@ public class AppUserService {
         return LoginResult.INVALID;
     }
 
-    /* CREATE / UPDATE / DELETE */
+    /* CREATE / READ / UPDATE / DELETE */
+
     /**
      * Cria um usuário.
      * Observação: se passwordHash for null e houver provisória, o Repository
@@ -71,6 +73,23 @@ public class AppUserService {
         return repo.insertWithProvisional(user);
     }
 
+    /** Read */
+    public Optional<AppUser> findById(long id) throws SQLException {
+        return repo.findById(id);
+    }
+
+    public Optional<AppUser> findByEmail(String email) throws SQLException {
+        return repo.findByEmail(normalizeEmail(email));
+    }
+
+    public boolean existsByEmail(String email) throws SQLException {
+        return repo.existsByEmail(normalizeEmail(email));
+    }
+
+    public List<AppUser> listAll() throws SQLException {
+        return repo.listAll();
+    }
+
     /** Atualiza dados básicos (email, nome) com optimistic locking. */
     public void updateBasics(AppUser user) throws SQLException {
         user.setEmail(normalizeEmail(user.getEmail()));
@@ -92,24 +111,9 @@ public class AppUserService {
         repo.deleteById(id);
     }
 
-    /* READ */
-    public Optional<AppUser> findById(long id) throws SQLException {
-        return repo.findById(id);
-    }
-
-    public Optional<AppUser> findByEmail(String email) throws SQLException {
-        return repo.findByEmail(normalizeEmail(email));
-    }
-
-    public boolean existsByEmail(String email) throws SQLException {
-        return repo.existsByEmail(normalizeEmail(email));
-    }
-
-    public List<AppUser> listAll() throws SQLException {
-        return repo.listAll();
-    }
 
     /* SIGNUP FLOW */
+
     /**
      * Autocadastro:
      * - Normaliza email
@@ -173,21 +177,29 @@ public class AppUserService {
         repo.updateOfficialPasswordAndClearProvisional(user.getId(), encoded);
     }
 
-    /**
-     * Esqueci minha senha:
-     * - Gera nova provisória
-     * - Grava seu hash em prov_pw_hash e zera email_conf_time
-     * - Retorna a senha provisória para envio por e-mail/SMS
-     */
+    /* PASSWORD RESET FLOW */
+
     @Transactional
-    public void forgotPassword(String email) throws SQLException {
-        AppUser user = repo.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
+    public String requestPasswordReset(String email) throws SQLException {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("E-mail obrigatório");
+        }
+        var userOpt = repo.findByEmail(normalizeEmail(email));
+        if (userOpt.isEmpty()) {
+            return null;
+        }
+        var user = userOpt.get();
+        String token = generateResetToken();
+        LocalDateTime expiry = LocalDateTime.now().plusMinutes(30);
 
-        String provisionalPlain = generateTempPassword(10);
-        String provisionalHash = passwordEncoder.encode(provisionalPlain);
+        repo.setResetToken(user.getId(), token, expiry);
 
-        repo.setProvisional(user.getId(), provisionalHash);
+        // TODO: enviar e-mail com link "http://localhost:8080/reset?token="+token
+        return token;
+    }
+
+    private static String generateResetToken() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     @Transactional
@@ -197,7 +209,7 @@ public class AppUserService {
             if (token == null || token.isBlank()) {
                 throw new IllegalArgumentException("Token inválido");
             }
-            validateNewPassword(newPassword);
+            ensureStrongPassword(newPassword);
 
             // 1) valida token
             var userIdOpt = repo.findIdByResetToken(token);
@@ -220,20 +232,8 @@ public class AppUserService {
         }
     }
 
-    private static void validateNewPassword(String pwd) {
-        if (pwd == null || pwd.isBlank()) {
-            throw new IllegalArgumentException("Senha inválida");
-        }
-        boolean lenOK = pwd.length() >= 8;
-        boolean up = pwd.chars().anyMatch(Character::isUpperCase);
-        boolean low = pwd.chars().anyMatch(Character::isLowerCase);
-        boolean dig = pwd.chars().anyMatch(Character::isDigit);
-        if (!(lenOK && up && low && dig)) {
-            throw new IllegalArgumentException("Senha fraca");
-        }
-    }
-
     /* UTILITY */
+
     /**
      * Verifica se a senha é forte o suficiente.
      * Critérios:
@@ -244,22 +244,13 @@ public class AppUserService {
      *
      * Lança IllegalArgumentException se a senha for fraca ou inválida.
      */
-    private static void ensureStrongPassword(String password) {
-        if (password == null) {
-            throw new IllegalArgumentException("Senha inválida");
-        }
-        String pwd = password.trim();
-        if (pwd.length() < 8) {
-            throw new IllegalArgumentException("Senha fraca");
-        }
-        if (!pwd.matches(".*[A-Z].*") ||
-                !pwd.matches(".*[a-z].*") ||
-                !pwd.matches(".*\\d.*")) {
-            throw new IllegalArgumentException("Senha fraca");
-        }
-        if (pwd.isBlank()) {
-            throw new IllegalArgumentException("Senha inválida");
-        }
+    private static void ensureStrongPassword(String pwd) {
+        if (pwd == null || pwd.isBlank()) throw new IllegalArgumentException("Senha inválida");
+        boolean lenOK = pwd.length() >= 8;
+        boolean up = pwd.chars().anyMatch(Character::isUpperCase);
+        boolean low = pwd.chars().anyMatch(Character::isLowerCase);
+        boolean dig = pwd.chars().anyMatch(Character::isDigit);
+        if (!(lenOK && up && low && dig)) throw new IllegalArgumentException("Senha fraca");
     }
 
     private static String normalizeEmail(String email) {

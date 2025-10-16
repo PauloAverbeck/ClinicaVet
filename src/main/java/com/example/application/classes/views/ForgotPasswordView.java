@@ -1,6 +1,6 @@
 package com.example.application.classes.views;
-import com.example.application.classes.AppUserService;
 
+import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
@@ -45,6 +45,13 @@ public class ForgotPasswordView extends VerticalLayout {
         email.setWidth("400px");
         email.setErrorMessage("Informe um e-mail válido");
         email.setRequiredIndicatorVisible(true);
+
+        email.addValueChangeListener( ev -> {
+            if (!email.isInvalid()) {
+                email.setInvalid(false);
+                email.setErrorMessage(null);
+            }
+        });
 
         enviarBtn.addClickShortcut(Key.ENTER);
         enviarBtn.addClickListener(e -> onSubmit());

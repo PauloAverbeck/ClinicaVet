@@ -6,7 +6,7 @@
 - [x] Configurar Datasource e Flyway;
 - [x] Implementar SignUp -> email com senha provisória;
 - [x] Implementar Primeiro Login (confirmação) -> promove senha provisória para oficial;
-- [ ] Telas Vaadin: SignUp, Login/Confirm, ForgotPassword (gera nova provisória);
+- [x] Telas Vaadin: SignUp, Login/Confirm, ForgotPassword (gera nova provisória);
 - [ ] Serviço de validação de documento (CPF/CNPJ/PASSAPORTE) básico.
 #
 - **Semana 2 - Empresa e vínculo**

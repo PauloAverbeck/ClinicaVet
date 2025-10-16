@@ -15,7 +15,6 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @PageTitle("Redefinir senha")
@@ -93,6 +92,9 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
         saveBtn.setDisableOnClick(true);
         saveBtn.setText("Salvando...");
 
+        newPasswordField.addValueChangeListener(e -> validateForm());
+        confirmPasswordField.addValueChangeListener(e -> validateForm());
+
         try {
             appUserService.resetPassword(token, pass1);
             Notification.show("Senha redefinida com sucesso. Você já pode entrar com a nova senha.", 5000, Notification.Position.MIDDLE)
@@ -105,5 +107,38 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
             saveBtn.setEnabled(true);
             saveBtn.setText("Salvar nova senha");
         }
+    }
+
+    private void validateForm() {
+        String p1 = safe(newPasswordField.getValue());
+        String p2 = safe(confirmPasswordField.getValue());
+
+        boolean lengthOk = p1.length() >= 8;
+        boolean up = p1.chars().anyMatch(Character::isUpperCase);
+        boolean low = p1.chars().anyMatch(Character::isLowerCase);
+        boolean digit = p1.chars().anyMatch(Character::isDigit);
+
+        // Força da senha
+        newPasswordField.setInvalid(!(lengthOk && up && low && digit));
+        if (newPasswordField.isInvalid()) {
+            newPasswordField.setErrorMessage("A senha deve ter no mínimo 8 caracteres, incluindo letras maiúsculas, minúsculas e números.");
+        } else {
+            newPasswordField.setErrorMessage(null);
+        }
+
+        // Confirmação
+        boolean match = !p2.isBlank() && p1.equals(p2);
+        confirmPasswordField.setInvalid(!match);
+        if (confirmPasswordField.isInvalid()) {
+            confirmPasswordField.setErrorMessage("As senhas não conferem.");
+        } else {
+            confirmPasswordField.setErrorMessage(null);
+        }
+
+        saveBtn.setEnabled(!newPasswordField.isInvalid() && !confirmPasswordField.isInvalid());
+    }
+
+    private static String safe(String s) {
+        return Optional.ofNullable(s).map(String::trim).orElse("");
     }
 }

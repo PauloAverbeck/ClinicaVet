@@ -9,7 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class AppUserServiceResetPasswordTest {
@@ -17,12 +18,13 @@ class AppUserServiceResetPasswordTest {
     private AppUserRepository repo;
     private PasswordEncoder encoder;
     private AppUserService service;
+    private ResetMailer resetMailer;
 
     @BeforeEach
     void setUp() {
         repo = mock(AppUserRepository.class);
         encoder = new BCryptPasswordEncoder();
-        service = new AppUserService(repo, encoder);
+        service = new AppUserService(repo, encoder, resetMailer);
     }
 
     @Test

@@ -1,8 +1,8 @@
 package com.example.application.classes;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
@@ -16,11 +16,13 @@ import java.util.UUID;
 public class AppUserService {
     private final AppUserRepository repo;
     private final PasswordEncoder passwordEncoder;
+    private final ResetMailer resetMailer;
 
     @Autowired
-    public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder) {
+    public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder, ResetMailer resetMailer) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
+        this.resetMailer = resetMailer;
     }
 
     public enum LoginResult {
@@ -194,8 +196,8 @@ public class AppUserService {
 
         repo.setResetToken(user.getId(), token, expiry);
 
-        // TODO: enviar e-mail com link "http://localhost:8080/reset?token="+token
-        return token;
+        resetMailer.send(user.getEmail(), token);
+        return token; //TODO remover posteriormente
     }
 
     private static String generateResetToken() {

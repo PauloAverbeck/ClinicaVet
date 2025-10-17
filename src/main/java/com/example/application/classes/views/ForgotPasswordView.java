@@ -84,11 +84,7 @@ public class ForgotPasswordView extends VerticalLayout {
         try {
             String token = appUserService.requestPasswordReset(email.getValue());
 
-            //TODO: remover exibição do token na notificação e implementar envio de e-mail
-            var n1 = Notification.show("Token gerado: " + token, 8000, Notification.Position.MIDDLE);
-            n1.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-            var n2 = Notification.show("Acesse /reset?token=" + token, 8000, Notification.Position.BOTTOM_CENTER);
+            var n2 = Notification.show("Email enviado!", 5000, Notification.Position.BOTTOM_CENTER);
             n2.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
             email.clear();

@@ -28,8 +28,8 @@ public class AppUserView extends Main {
     public AppUserView(final AppUserService userService) {
         this.userService = Objects.requireNonNull(userService);
 
-        ViewToolbar toolbar = new ViewToolbar("Users");
-        add(toolbar);
+        var header = new ViewToolbar("Users");
+        add(header);
 
         this.grid = buildGrid();
         add(grid);

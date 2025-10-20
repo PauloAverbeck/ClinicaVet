@@ -1,11 +1,10 @@
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
@@ -19,7 +18,7 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 @RouteAlias(value = "home", layout = MainLayout.class)
 @Menu(title = "Home", icon = "la la-home", order = 0)
 @AnonymousAllowed
-public class LandingView extends Main {
+public class LandingView extends VerticalLayout {
 
     public LandingView() {
         addClassNames(
@@ -28,23 +27,22 @@ public class LandingView extends Main {
                 LumoUtility.Width.FULL
         );
 
-        //Toolbar
-        ViewToolbar toolbar = new ViewToolbar("ClinicaVet");
-        add(toolbar);
+        var header = new ViewToolbar("ClinicaVet");
+        add(header);
 
-        //Header
-        final var header = new VerticalLayout();
-        header.setSpacing(false);
-        header.setPadding(false);
-        header.setAlignItems(FlexComponent.Alignment.START);
-        header.add(
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
+
+        var content = body.wrapper();
+
+        content.add(
                 new H1("Welcome to ClinicaVet"),
-                new Paragraph("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam scelerisque aliquam odio et faucibus. Nulla rhoncus feugiat eros quis consectetur.")
+                new Paragraph("<-- Navegue pelo menu lateral!"),
+                new Paragraph(("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."))
         );
-        header.addClassNames(
+        content.addClassNames(
                 LumoUtility.Margin.Bottom.MEDIUM
         );
-
-        add(header);
     }
 }

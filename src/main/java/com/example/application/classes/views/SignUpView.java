@@ -1,6 +1,7 @@
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.button.Button;
@@ -28,13 +29,20 @@ public class SignUpView extends VerticalLayout {
 
     public SignUpView(AppUserService appUserService) {
         this.appUserService = appUserService;
-        ViewToolbar toolbar = new ViewToolbar("Sign Up");
-        add(toolbar);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
+
+        var header = new ViewToolbar("Sign Up");
+        add(header);
+
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
+
+        var content = body.wrapper();
 
         H1 title = new H1("Criar conta");
         emailField.setClearButtonVisible(true);
@@ -46,7 +54,7 @@ public class SignUpView extends VerticalLayout {
 
         createBtn.addClickListener(e -> onCreate());
 
-        add(title, nameField, emailField, createBtn);
+        content.add(title, nameField, emailField, createBtn);
 
         getElement().addEventListener("keyup", ev -> onCreate())
                 .setFilter("event.key === 'Enter'");

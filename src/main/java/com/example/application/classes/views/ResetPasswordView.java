@@ -1,6 +1,7 @@
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.Key;
@@ -34,16 +35,22 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
     @Autowired
     public ResetPasswordView(AppUserService appUserService) {
         this.appUserService = appUserService;
-        ViewToolbar toolbar = new ViewToolbar("Reset Password");
-        add(toolbar);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
         setDefaultHorizontalComponentAlignment(FlexComponent.Alignment.CENTER);
         setSpacing(true);
-        getStyle().set("padding", "var(--lumo-space-l)");
 
-        add(
+        var header = new ViewToolbar("Reset Password");
+        add(header);
+
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
+
+        var content = body.wrapper();
+
+        content.add(
                 new H1("Redefinir senha"),
                 new Paragraph("Defina uma nova senha para sua conta.")
         );
@@ -56,7 +63,7 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
         saveBtn.addClickShortcut(Key.ENTER);
         saveBtn.addClickListener(e -> onSubmit());
 
-        add(newPasswordField, confirmPasswordField, saveBtn);
+        content.add(newPasswordField, confirmPasswordField, saveBtn);
     }
 
     @Override

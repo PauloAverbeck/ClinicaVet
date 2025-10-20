@@ -1,6 +1,7 @@
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.Key;
@@ -34,13 +35,20 @@ public class ForgotPasswordView extends VerticalLayout {
     @Autowired
     public ForgotPasswordView(AppUserService appUserService) {
         this.appUserService = appUserService;
-        ViewToolbar toolbar = new ViewToolbar("Forgot Password");
-        add(toolbar);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
         setAlignItems(Alignment.CENTER);
         setSpacing(true);
+
+        var header = new ViewToolbar("Forgot Password");
+        add(header);
+
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
+
+        var content = body.wrapper();
 
         final var title = new H1("Esqueci minha senha");
         final var subtitle = new Paragraph("Informe o seu e-mail. Se houver uma conta associada, você receberá um e-mail com instruções para redefinir sua senha.");
@@ -66,14 +74,8 @@ public class ForgotPasswordView extends VerticalLayout {
         voltarLoginBtn.getElement().setProperty("title", "Voltar para a tela de login");
         voltarLoginBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        VerticalLayout form = new VerticalLayout(email, enviarBtn, voltarLoginBtn);
-        form.add(email, enviarBtn, voltarLoginBtn);
-        form.setWidth("400px");
-        form.setAlignItems(Alignment.CENTER);
-        form.setPadding(false);
-        form.setSpacing(true);
 
-        add(title, subtitle, form);
+        content.add(title, subtitle, email, enviarBtn, voltarLoginBtn);
     }
 
     private void onSubmit() {

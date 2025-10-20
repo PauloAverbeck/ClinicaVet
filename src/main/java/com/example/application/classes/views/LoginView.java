@@ -1,11 +1,13 @@
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.example.application.classes.AppUserService.LoginResult;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
@@ -30,26 +32,36 @@ public class LoginView extends VerticalLayout {
 
     public LoginView(AppUserService appUserService) {
         this.appUserService = appUserService;
-        ViewToolbar toolbar = new ViewToolbar("Login");
-        add(toolbar);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
 
+        var header = new ViewToolbar("Login");
+        add(header);
+
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
+
+        var content = body.wrapper();
+
         H1 title = new H1("Entrar / Confirmar cadastro");
 
         emailField.setPlaceholder("voce@exemplo.com");
         emailField.setClearButtonVisible(true);
         emailField.setErrorMessage("Informe um e-mail válido");
+        emailField.setWidth("320px");
 
         passwordField.setRevealButtonVisible(true);
         passwordField.setPlaceholder("Sua senha (pode ser a provisória)");
+        passwordField.setWidth("320px");
 
         loginBtn.addClickListener(e -> onLogin());
+        loginBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        add(title, emailField, passwordField, loginBtn);
+        content.add(title, emailField, passwordField, loginBtn, forgotPasswordLink());
 
         getElement().addEventListener("keyup", ev -> onLogin())
                 .setFilter("event.key === 'Enter'");

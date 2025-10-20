@@ -16,6 +16,7 @@ public class CenteredBody extends Composite<Div> {
                 .set("padding", "var(--lumo-space-m)");
 
         var wrapper = new Div();
+        wrapper.addClassName("center-card");
         wrapper.getStyle()
                 .set("display", "flex")
                 .set("flex-direction", "column")

@@ -1,5 +1,6 @@
 package com.example.application.base.ui;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
@@ -11,15 +12,16 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
+import com.vaadin.flow.theme.lumo.Lumo;
 
 import static com.vaadin.flow.theme.lumo.LumoUtility.*;
 
 @Layout
 public final class MainLayout extends AppLayout {
-
     MainLayout() {
         setPrimarySection(Section.DRAWER);
         addToDrawer(createHeader(), new Scroller(createSideNav()));
+        UI.getCurrent().getElement().getThemeList().add(Lumo.DARK);
     }
 
     private Div createHeader() {

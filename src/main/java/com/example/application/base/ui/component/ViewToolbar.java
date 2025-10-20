@@ -21,7 +21,7 @@ public final class ViewToolbar extends Composite<Header> {
         drawerToggle.addClassNames(Margin.NONE);
 
         var title = new H1(viewTitle);
-        title.addClassNames(FontSize.XLARGE, Margin.NONE, FontWeight.LIGHT);
+        title.addClassNames(FontSize.XLARGE, Margin.NONE, FontWeight.MEDIUM);
 
         var toggleAndTitle = new Div(drawerToggle, title);
         toggleAndTitle.addClassNames(Display.FLEX, AlignItems.CENTER);
@@ -37,6 +37,10 @@ public final class ViewToolbar extends Composite<Header> {
         getContent().getStyle().set("align-self", "flex-start");
         getContent().getStyle().set("margin-right", "auto");
         getContent().getStyle().set("margin-left", "0");
+        getContent().getStyle().set("flex-shrink", "0");
+        getContent().getStyle().set("width", "100%");
+        getContent().getStyle().set("position", "sticky");
+        getContent().addClassName("view-toolbar");
     }
 
     public static Component group(Component... components) {

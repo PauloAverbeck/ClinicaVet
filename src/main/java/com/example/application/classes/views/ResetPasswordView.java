@@ -6,6 +6,7 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
@@ -62,6 +63,7 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
 
         saveBtn.addClickShortcut(Key.ENTER);
         saveBtn.addClickListener(e -> onSubmit());
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         content.add(newPasswordField, confirmPasswordField, saveBtn);
     }

@@ -1,1 +1,50 @@
-/* Add your styles here */
+:root,
+[theme~="dark"] {
+  /* Base & texto */
+  --lumo-base-color: hsl(220, 25%, 10%);
+  --lumo-body-text-color: hsl(220, 15%, 86%);
+  --lumo-secondary-text-color: hsl(220, 10%, 70%);
+
+  /* Primária (violeta/azul) */
+  --lumo-primary-color: hsl(262, 70%, 60%);
+  --lumo-primary-color-10pct: hsla(262, 70%, 60%, .10);
+  --lumo-primary-color-50pct: hsla(262, 70%, 60%, .50);
+
+  /* Feedback */
+  --lumo-success-color: hsl(154, 60%, 45%);
+  --lumo-error-color:   hsl(0,   65%, 55%);
+  --lumo-warning-color: hsl(45,  90%, 60%);
+
+  /* Bordas / sombras / raios */
+  --lumo-border-radius-s: 8px;
+  --lumo-border-radius-m: 12px;
+  --lumo-border-radius-l: 16px;
+  --lumo-box-shadow-s: 0 4px 12px rgba(0,0,0,.4);
+  --lumo-box-shadow-m: 0 10px 24px rgba(0,0,0,.45);
+  --lumo-box-shadow-l: 0 18px 36px rgba(0,0,0,.5);
+  --lumo-tint-10pct: rgba(255,255,255,0.06);
+}
+
+/* Cartão central das telas públicas */
+.center-card {
+  background: linear-gradient(180deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.02) 100%);
+  border: 1px solid var(--lumo-tint-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  box-shadow: var(--lumo-box-shadow-s);
+  padding: var(--lumo-space-l);
+}
+
+/* Inputs mais agradáveis no dark */
+vaadin-text-field::part(input-field),
+vaadin-password-field::part(input-field) {
+  background: rgba(255,255,255,.04);
+  border-radius: var(--lumo-border-radius-m);
+  box-shadow: inset 0 0 0 1px var(--lumo-tint-10pct);
+}
+
+/* Botão primário com leve brilho */
+vaadin-button[theme~="primary"]::part(label) { font-weight: 600; }
+vaadin-button[theme~="primary"] { box-shadow: 0 6px 16px var(--lumo-primary-color-50pct); }
+
+/* Links */
+a, vaadin-button[theme~="tertiary-inline"] { color: var(--lumo-primary-color); }

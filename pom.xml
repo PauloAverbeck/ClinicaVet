@@ -76,6 +76,11 @@
             <version>2.2.224</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.parttio</groupId>
+            <artifactId>starpass-theme</artifactId>
+            <version>1.0.4</version>
+        </dependency>
     </dependencies>
 
     <build>

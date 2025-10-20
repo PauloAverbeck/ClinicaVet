@@ -1,5 +1,7 @@
 package com.example.application.classes.views;
 
+import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.example.application.classes.AppUserService.LoginResult;
 import com.vaadin.flow.component.UI;
@@ -12,13 +14,14 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
+import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 @PageTitle("Entrar / Confirmar")
-@Route("login")
+@Route(value = "login", layout = MainLayout.class)
+@Menu(title = "Login", icon = "la la-sign-in-alt", order = 1)
 public class LoginView extends VerticalLayout {
-
     private final AppUserService appUserService;
 
     private final EmailField emailField = new EmailField("E-mail");
@@ -27,6 +30,8 @@ public class LoginView extends VerticalLayout {
 
     public LoginView(AppUserService appUserService) {
         this.appUserService = appUserService;
+        ViewToolbar toolbar = new ViewToolbar("Login");
+        add(toolbar);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);

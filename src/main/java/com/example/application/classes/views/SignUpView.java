@@ -1,5 +1,7 @@
 package com.example.application.classes.views;
 
+import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -9,11 +11,13 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 @PageTitle("Criar conta")
-@Route("signup")
+@Route(value = "signup", layout = MainLayout.class)
+@Menu(title = "Sign Up", icon = "la la-user-plus", order = 2)
 public class SignUpView extends VerticalLayout {
 
     private final AppUserService appUserService;
@@ -24,6 +28,8 @@ public class SignUpView extends VerticalLayout {
 
     public SignUpView(AppUserService appUserService) {
         this.appUserService = appUserService;
+        ViewToolbar toolbar = new ViewToolbar("Sign Up");
+        add(toolbar);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);

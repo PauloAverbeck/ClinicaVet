@@ -1,5 +1,7 @@
 package com.example.application.classes.views;
 
+import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
@@ -10,6 +12,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
@@ -17,7 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 
 @PageTitle("Esqueci minha senha")
-@Route("forgot")
+@Route(value = "forgot", layout = MainLayout.class)
+@Menu(title = "Forgot Password", icon = "la la-key", order = 3)
 @AnonymousAllowed
 public class ForgotPasswordView extends VerticalLayout {
 
@@ -30,6 +34,8 @@ public class ForgotPasswordView extends VerticalLayout {
     @Autowired
     public ForgotPasswordView(AppUserService appUserService) {
         this.appUserService = appUserService;
+        ViewToolbar toolbar = new ViewToolbar("Forgot Password");
+        add(toolbar);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);

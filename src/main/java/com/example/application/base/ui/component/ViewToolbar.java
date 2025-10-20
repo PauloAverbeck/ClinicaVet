@@ -33,6 +33,10 @@ public final class ViewToolbar extends Composite<Header> {
                     FlexDirection.Breakpoint.Medium.ROW);
             getContent().add(actions);
         }
+
+        getContent().getStyle().set("align-self", "flex-start");
+        getContent().getStyle().set("margin-right", "auto");
+        getContent().getStyle().set("margin-left", "0");
     }
 
     public static Component group(Component... components) {

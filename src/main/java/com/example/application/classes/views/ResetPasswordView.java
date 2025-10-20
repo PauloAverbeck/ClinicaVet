@@ -1,5 +1,7 @@
 package com.example.application.classes.views;
 
+import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
@@ -18,10 +20,10 @@ import java.util.List;
 import java.util.Optional;
 
 @PageTitle("Redefinir senha")
-@Route("reset")
+@Route(value = "reset", layout = MainLayout.class)
+@Menu(title = "Reset Password", icon = "la la-key", order = 4)
 @AnonymousAllowed
 public class ResetPasswordView extends VerticalLayout implements HasUrlParameter<String> {
-
     private final AppUserService appUserService;
     private String token;
 
@@ -32,6 +34,8 @@ public class ResetPasswordView extends VerticalLayout implements HasUrlParameter
     @Autowired
     public ResetPasswordView(AppUserService appUserService) {
         this.appUserService = appUserService;
+        ViewToolbar toolbar = new ViewToolbar("Reset Password");
+        add(toolbar);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);

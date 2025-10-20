@@ -18,18 +18,17 @@ import java.util.Objects;
 
 @PageTitle("Users")
 @Route(value = "users", layout = MainLayout.class)
-@Menu(order = 10, icon = "la la-user", title = "Users")
+@Menu(title = "Users", icon = "la la-users", order = 5)
 
 public class AppUserView extends Main {
 
     private final AppUserService userService;
-    private final ViewToolbar toolbar;
     private final Grid<AppUser> grid;
 
     public AppUserView(final AppUserService userService) {
         this.userService = Objects.requireNonNull(userService);
 
-        this.toolbar = new ViewToolbar("Users");
+        ViewToolbar toolbar = new ViewToolbar("Users");
         add(toolbar);
 
         this.grid = buildGrid();

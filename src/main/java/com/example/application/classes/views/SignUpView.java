@@ -6,9 +6,7 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -46,12 +44,15 @@ public class SignUpView extends VerticalLayout {
         var content = body.wrapper();
 
         H1 title = new H1("Criar conta");
-        emailField.setClearButtonVisible(true);
-        emailField.setErrorMessage("Informe um e-mail válido");
-        emailField.setPlaceholder("voce@exemplo.com");
 
         nameField.setClearButtonVisible(true);
         nameField.setPlaceholder("Seu nome");
+        nameField.setRequiredIndicatorVisible(true);
+
+        emailField.setClearButtonVisible(true);
+        emailField.setErrorMessage("Informe um e-mail válido");
+        emailField.setPlaceholder("voce@exemplo.com");
+        emailField.setRequiredIndicatorVisible(true);
 
         createBtn.addClickListener(e -> onCreate());
         createBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -63,15 +64,13 @@ public class SignUpView extends VerticalLayout {
     }
 
     private void onCreate() {
-        String name  = valueOrNull(nameField.getValue());
-        String email = valueOrNull(emailField.getValue());
+        String name  = trimOrNull(nameField.getValue());
+        String email = trimOrNull(emailField.getValue());
 
         if (name == null || name.isBlank()) {
             Notification.show("Informe seu nome.", 3000, Notification.Position.MIDDLE);
             nameField.focus();
             return;
-        }
-        if (email == null || !emailField.isInvalid() && email.contains("@") == false) {
         }
         if (email == null || email.isBlank() || emailField.isInvalid()) {
             Notification.show("Informe um e-mail válido.", 3000, Notification.Position.MIDDLE);
@@ -80,19 +79,9 @@ public class SignUpView extends VerticalLayout {
         }
 
         try {
-            // Service gera a senha provisória (BCrypt) e retorna a senha em claro
-            String provisional = appUserService.requestSignup(name, email);
+            appUserService.requestSignup(name, email);
 
-            // MVP: mostra a senha provisória num diálogo /TODO (ainda não tem SMTP)
-            Dialog d = new Dialog();
-            d.setHeaderTitle("Conta criada!");
-            d.add(new Paragraph("Guarde esta senha provisória:"));
-            d.add(new Paragraph(" "));
-            d.add(new Paragraph(" " + provisional + " "));
-            d.add(new Paragraph("Use-a no primeiro login para confirmar seu e-mail."));
-            Button ok = new Button("OK", ev -> d.close());
-            d.getFooter().add(ok);
-            d.open();
+            Notification.show("Cadastro recebido! Enviamos uma senha provisória para seu e-mail.",4500, Notification.Position.MIDDLE);
 
             nameField.clear();
             emailField.clear();
@@ -105,7 +94,7 @@ public class SignUpView extends VerticalLayout {
         }
     }
 
-    private static String valueOrNull(String v) {
+    private static String trimOrNull(String v) {
         return v == null ? null : v.trim();
     }
 }

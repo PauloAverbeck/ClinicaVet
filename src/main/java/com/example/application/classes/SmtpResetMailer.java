@@ -13,52 +13,49 @@ import org.springframework.stereotype.Service;
 public class SmtpResetMailer implements ResetMailer {
     private final JavaMailSender mailSender;
 
-    @Value("${app.reset.base-url}")
-    private String baseUrl;
-
-    @Value("${spring.mail.username:paverbeck@t3w.io}")
+    @Value("${spring.mail.username}")
     private String from;
+
+    @Value("${app.product.name:Clínica Vet}")
+    private String productName;
 
     public SmtpResetMailer(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
     @Override
-    public void send(String toEmail, String token) {
-        String link = baseUrl + "/reset?token=" + token;
+    public void sendProvisionalPassword(String toEmail, String provisionalPlain, String reason) {
+        String subject = switch (reason) {
+            case "signup" -> productName + " – Confirmação de cadastro";
+            case "forgot" -> productName + " – Recuperação de senha";
+            default -> productName + " – Acesso provisório";
+        };
 
-        String subject = "Redefinição de senha - Clínica Vet";
         String html = """
-                <html>
-                  <body style="font-family:Arial, Helvetica, sans-serif; background-color:#f9f9f9; padding:40px;">
-                    <table align="center" width="100%%" style="max-width:600px; background:white; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.05); padding:24px;">
-                      <tr>
-                        <td style="text-align:center;">
-                          <h2 style="color:#0077b6;">Redefinição de Senha</h2>
-                          <p style="color:#333; font-size:15px;">
-                            Recebemos uma solicitação para redefinir sua senha.<br>
-                            Para continuar, clique no botão abaixo. O link expira em <strong>30 minutos</strong>.
-                          </p>
-                          <p style="margin:30px 0;">
-                            <a href="%s" style="background-color:#0077b6; color:white; text-decoration:none; padding:12px 24px; border-radius:5px; display:inline-block;">
-                              Redefinir minha senha
-                            </a>
-                          </p>
-                          <p style="color:#555; font-size:13px;">
-                            Se você não solicitou esta alteração, ignore este e-mail.<br>
-                            Sua conta permanecerá segura.
-                          </p>
-                          <hr style="border:none; border-top:1px solid #eee; margin:30px 0;">
-                          <p style="font-size:12px; color:#aaa;">
-                            © 2025 Clínica Vet. Todos os direitos reservados.<br>
-                            Este e-mail foi enviado automaticamente, por favor não responda.
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
-                  </body>
-                </html>
-                """.formatted(link);
+            <html>
+              <body style="font-family:Arial, Helvetica, sans-serif; background-color:#f9f9f9; padding:40px;">
+                <table align="center" width="100%%" style="max-width:600px; background:white; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.05); padding:24px;">
+                  <tr>
+                    <td style="text-align:center;">
+                      <h2 style="color:#0077b6;">Sua senha provisória</h2>
+                      <p style="color:#333; font-size:15px;">
+                        %s
+                      </p>
+                      <p style="color:#333; font-size:14px; margin-top:25px;">
+                        Use essa senha provisória para fazer login.<br>
+                        Ao entrar, ela será automaticamente promovida a sua senha oficial.
+                      </p>
+                      <hr style="border:none; border-top:1px solid #eee; margin:30px 0;">
+                      <p style="font-size:12px; color:#aaa;">
+                        © 2025 %s. Todos os direitos reservados.<br>
+                        Este e-mail foi enviado automaticamente, por favor não responda.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </body>
+            </html>
+            """.formatted("<strong>" + provisionalPlain + "</strong>", productName);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -67,10 +64,9 @@ public class SmtpResetMailer implements ResetMailer {
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(html, true);
-
             mailSender.send(message);
         } catch (MessagingException e) {
-            throw new RuntimeException("Falha ao enviar e-mail de redefinição", e);
+            throw new RuntimeException("Falha ao enviar e-mail de senha provisória", e);
         }
     }
 }

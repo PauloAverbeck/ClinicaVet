@@ -148,8 +148,8 @@ public class AppUserRepository {
         final String sql = """
             UPDATE app_user
                SET prov_pw_hash = ?,
-                   email_conf_time = NULL,
-                   version = version + 1
+                   version = version + 1,
+                   update_date = CURRENT_TIMESTAMP
              WHERE id = ?
              RETURNING update_date, version
             """;
@@ -265,92 +265,6 @@ public class AppUserRepository {
             int rows = ps.executeUpdate();
             if (rows == 0) {
                 throw new SQLException("Nenhum AppUser encontrado para exclusão. ID=" + id);
-            }
-        }
-    }
-
-    /* TOKEN */
-    public Optional<Long> findIdByResetToken(String token) throws SQLException {
-        final String sql = """
-            SELECT id
-             FROM app_user
-             WHERE reset_token = ?
-            """;
-        try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, token);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(rs.getLong("id"));
-                return Optional.empty();
-            }
-        }
-    }
-
-    public void setResetToken(long userId, String token, LocalDateTime expiry) throws SQLException {
-        final String sql = """
-            UPDATE app_user
-             SET reset_token = ?,
-                 reset_token_expiry = ?
-             WHERE id = ?
-            """;
-        try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, token);
-            ps.setTimestamp(2, Timestamp.valueOf(expiry));
-            ps.setLong(3, userId);
-            ps.executeUpdate();
-        }
-    }
-
-    public LocalDateTime getResetTokenExpiry(long userId) throws SQLException {
-        final String sql = """
-            SELECT reset_token_expiry
-             FROM app_user
-             WHERE id = ?
-            """;
-        try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Timestamp ts = rs.getTimestamp(1);
-                    return ts != null ? ts.toLocalDateTime() : null;
-                }
-                return null;
-            }
-        }
-    }
-
-    public void clearTokenAndUpdatePassword(long userId, String encodedPassword) throws SQLException {
-        final String sql = """
-            UPDATE app_user
-             SET password_hash = ?,
-                 reset_token = NULL,
-                 reset_token_expiry = NULL,
-                 update_date = CURRENT_TIMESTAMP,
-                 version = version +1
-             WHERE id = ?
-            """;
-        try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, encodedPassword);
-            ps.setLong(2, userId);
-            ps.executeUpdate();
-        }
-    }
-
-    public Optional<String> getResetTokenByUserId(long userId) throws SQLException {
-        final String sql = """
-            SELECT reset_token
-             FROM app_user
-             WHERE id = ?
-            """;
-        try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.ofNullable(rs.getString(1));
-                return Optional.empty();
             }
         }
     }

@@ -50,13 +50,17 @@ public class ForgotPasswordView extends VerticalLayout {
 
         var content = body.wrapper();
 
-        final var title = new H1("Esqueci minha senha");
-        final var subtitle = new Paragraph("Informe o seu e-mail. Se houver uma conta associada, você receberá um e-mail com instruções para redefinir sua senha.");
+        H1 title = new H1("Esqueci minha senha");
+        Paragraph subtitle = new Paragraph(
+                "Digite seu e-mail. Se existir uma conta associada, enviaremos uma "
+                        + "senha provisória para você entrar e definir uma nova senha."
+        );
 
+        email.setPlaceholder("voce@exemplo.com");
         email.setClearButtonVisible(true);
-        email.setWidth("300px");
-        email.setErrorMessage("Informe um e-mail válido");
         email.setRequiredIndicatorVisible(true);
+        email.setErrorMessage("Informe um e-mail válido");
+        email.setWidth("320px");
 
         email.addValueChangeListener( ev -> {
             if (!email.isInvalid()) {
@@ -67,11 +71,9 @@ public class ForgotPasswordView extends VerticalLayout {
 
         enviarBtn.addClickShortcut(Key.ENTER);
         enviarBtn.addClickListener(e -> onSubmit());
-        enviarBtn.getElement().setProperty("title", "Enviar link de redefinição de senha");
         enviarBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("login")));
-        voltarLoginBtn.getElement().setProperty("title", "Voltar para a tela de login");
         voltarLoginBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
 
@@ -90,10 +92,10 @@ public class ForgotPasswordView extends VerticalLayout {
         }
         setLoading(true);
         try {
-            String token = appUserService.requestPasswordReset(email.getValue());
+            appUserService.forgotPassword(value);
 
-            var n2 = Notification.show("Email enviado!", 5000, Notification.Position.BOTTOM_CENTER);
-            n2.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            var ok = Notification.show("Se o e-mail estiver cadastrado, você receberá uma senha provisória em instantes.", 5000, Notification.Position.BOTTOM_CENTER);
+            ok.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
             email.clear();
         } catch (Exception ex) {

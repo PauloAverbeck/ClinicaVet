@@ -1,5 +1,5 @@
 package com.example.application.classes;
 
 public interface ResetMailer {
-    void send(String toEmail, String token);
+    void sendProvisionalPassword(String toEmail, String provisionalPlain, String reason);
 }

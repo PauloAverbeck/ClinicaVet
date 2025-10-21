@@ -10,7 +10,6 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class AppUserService {
@@ -36,8 +35,9 @@ public class AppUserService {
                 .orElse(null);
         if (user == null) return LoginResult.INVALID;
 
-        if (user.getProvisionalPasswordHash() != null) {
-            if (passwordEncoder.matches(plainPassword, user.getProvisionalPasswordHash())) {
+        String prov = user.getProvisionalPasswordHash();
+        if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
+            repo.promoteProvisionalToOfficial(user.getId()); {
                 repo.promoteProvisionalToOfficial(user.getId());
                 return LoginResult.CONFIRMED;
             }
@@ -123,7 +123,7 @@ public class AppUserService {
      * - Insere usuário com a provisória (password_hash pode ficar null; o repo cuidará do NOT NULL)
      * - Retorna a senha provisória para que outra camada envie por e-mail/SMS.
      */
-    public String requestSignup(String name, String email) throws SQLException {
+    public void requestSignup(String name, String email) throws SQLException {
         final String normalizedEmail = normalizeEmail(email);
 
         if (existsByEmail(normalizedEmail)) {
@@ -142,7 +142,7 @@ public class AppUserService {
 
         repo.insertWithProvisional(user);
 
-        return provisionalPlain;
+        resetMailer.sendProvisionalPassword(normalizedEmail, provisionalPlain, "signup");
     }
 
     /**
@@ -182,56 +182,21 @@ public class AppUserService {
     /* PASSWORD RESET FLOW */
 
     @Transactional
-    public String requestPasswordReset(String email) throws SQLException {
+    public void forgotPassword(String email) throws SQLException {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("E-mail obrigatório");
+            return;
         }
         var userOpt = repo.findByEmail(normalizeEmail(email));
         if (userOpt.isEmpty()) {
-            return null;
+            return;
         }
         var user = userOpt.get();
-        String token = generateResetToken();
-        LocalDateTime expiry = LocalDateTime.now().plusMinutes(30);
 
-        repo.setResetToken(user.getId(), token, expiry);
+        String provisionalPlain = generateTempPassword(10);
+        String provisionalHash = passwordEncoder.encode(provisionalPlain);
 
-        resetMailer.send(user.getEmail(), token);
-        return token; //TODO remover posteriormente
-    }
-
-    private static String generateResetToken() {
-        return UUID.randomUUID().toString().replace("-", "");
-    }
-
-    @Transactional
-    public void resetPassword(String token, String newPassword) {
-        try {
-            // validações de entrada
-            if (token == null || token.isBlank()) {
-                throw new IllegalArgumentException("Token inválido");
-            }
-
-            // 1) valida token
-            var userIdOpt = repo.findIdByResetToken(token);
-            if (userIdOpt.isEmpty()) {
-                throw new IllegalArgumentException("Token inválido");
-            }
-            long userId = userIdOpt.get();
-
-            // 2) valida expiração
-            var expiry = repo.getResetTokenExpiry(userId);
-            if (expiry == null || !expiry.isAfter(LocalDateTime.now())) {
-                throw new IllegalArgumentException("Token expirado");
-            }
-            ensureStrongPassword(newPassword);
-
-            // 3) codifica e atualiza + limpa token
-            String encoded = passwordEncoder.encode(newPassword);
-            repo.clearTokenAndUpdatePassword(userId, encoded);
-        } catch (SQLException e) {
-            throw new RuntimeException("Erro ao redefinir senha", e);
-        }
+        repo.setProvisional(user.getId(), provisionalHash);
+        resetMailer.sendProvisionalPassword(user.getEmail(), provisionalPlain, "forgot");
     }
 
     /* UTILITY */

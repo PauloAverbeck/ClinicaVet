@@ -4,6 +4,7 @@ import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
@@ -55,12 +56,11 @@ public class SignUpView extends VerticalLayout {
         emailField.setRequiredIndicatorVisible(true);
 
         createBtn.addClickListener(e -> onCreate());
+        createBtn.addClickShortcut(Key.ENTER);
+        createBtn.setDisableOnClick(true);
         createBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         content.add(title, nameField, emailField, createBtn);
-
-        getElement().addEventListener("keyup", ev -> onCreate())
-                .setFilter("event.key === 'Enter'");
     }
 
     private void onCreate() {

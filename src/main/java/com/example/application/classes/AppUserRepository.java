@@ -171,27 +171,21 @@ public class AppUserRepository {
      * Promove a senha provisória para oficial e confirma o email.
      * (Usado no primeiro login/fluxo de confirmação.)
      */
-    public void promoteProvisionalToOfficial(long userId) throws SQLException {
+    public boolean promoteProvisionalToOfficial(long userId) throws SQLException {
         final String sql = """
-            UPDATE app_user
-               SET password_hash   = prov_pw_hash,
-                   prov_pw_hash    = NULL,
-                   email_conf_time = CURRENT_TIMESTAMP,
-                   version = version + 1
-             WHERE id = ?
-               AND prov_pw_hash IS NOT NULL
-             RETURNING update_date, version
-            """;
+        UPDATE app_user
+           SET password_hash   = prov_pw_hash,
+               prov_pw_hash    = NULL,
+               email_conf_time = CURRENT_TIMESTAMP,
+               version = version + 1
+         WHERE id = ?
+           AND prov_pw_hash IS NOT NULL
+    """;
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-
             ps.setLong(1, userId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    throw new SQLException("Não havia senha provisória para promover (AppUser id=" + userId + ")");
-                }
-            }
+            int rows = ps.executeUpdate();
+            return rows > 0;
         }
     }
 

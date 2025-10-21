@@ -31,16 +31,17 @@ public class AppUserService {
     }
 
     public LoginResult loginOrConfirm(String email, String plainPassword) throws SQLException {
-        AppUser user = repo.findByEmail(normalizeEmail(email))
+        email = normalizeEmail(email);
+        plainPassword = plainPassword == null ? null : plainPassword.trim();
+
+        AppUser user = repo.findByEmail(email)
                 .orElse(null);
         if (user == null) return LoginResult.INVALID;
 
         String prov = user.getProvisionalPasswordHash();
         if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
-            repo.promoteProvisionalToOfficial(user.getId()); {
-                repo.promoteProvisionalToOfficial(user.getId());
-                return LoginResult.CONFIRMED;
-            }
+            boolean promoted = repo.promoteProvisionalToOfficial(user.getId());
+            return LoginResult.CONFIRMED;
         }
         String official = user.getPasswordHash();
         if (official != null && passwordEncoder.matches(plainPassword, official)) {

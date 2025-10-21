@@ -5,6 +5,7 @@ import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.AppUserService;
 import com.example.application.classes.AppUserService.LoginResult;
+import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -59,12 +60,10 @@ public class LoginView extends VerticalLayout {
         passwordField.setWidth("320px");
 
         loginBtn.addClickListener(e -> onLogin());
+        loginBtn.addClickShortcut(Key.ENTER);
         loginBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         content.add(title, emailField, passwordField, loginBtn, forgotPasswordLink());
-
-        getElement().addEventListener("keyup", ev -> onLogin())
-                .setFilter("event.key === 'Enter'");
     }
 
     private void onLogin() {

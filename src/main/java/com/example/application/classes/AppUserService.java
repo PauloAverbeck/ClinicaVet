@@ -211,7 +211,6 @@ public class AppUserService {
             if (token == null || token.isBlank()) {
                 throw new IllegalArgumentException("Token inválido");
             }
-            ensureStrongPassword(newPassword);
 
             // 1) valida token
             var userIdOpt = repo.findIdByResetToken(token);
@@ -222,9 +221,10 @@ public class AppUserService {
 
             // 2) valida expiração
             var expiry = repo.getResetTokenExpiry(userId);
-            if (expiry == null || expiry.isBefore(java.time.LocalDateTime.now())) {
+            if (expiry == null || !expiry.isAfter(LocalDateTime.now())) {
                 throw new IllegalArgumentException("Token expirado");
             }
+            ensureStrongPassword(newPassword);
 
             // 3) codifica e atualiza + limpa token
             String encoded = passwordEncoder.encode(newPassword);

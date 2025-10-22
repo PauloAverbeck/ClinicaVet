@@ -1,51 +1,35 @@
 package com.example.application.classes;
 
-import java.util.Objects;
+import java.time.LocalDateTime;
 
-public class Company extends AbstractEntity {
-    private String documentType;
-    private String document;
+public class Company {
+    private long id;
+    private int version;
+    private LocalDateTime creationDate;
+    private LocalDateTime updateDate;
+
     private String name;
+    private DocumentType documentType;
+    private String document;
 
-    public Company() {}
+    public long getId() { return id; }
+    public Company setId(long id) { this.id = id; return this; }
 
-    public String getDocumentType() {
-        return documentType;
-    }
+    public int getVersion() { return version; }
+    public Company setVersion(int version) { this.version = version; return this; }
 
-    public Company setDocumentType(String documentType) {
-        this.documentType = documentType;
-        return this;
-    }
+    public LocalDateTime getCreationDate() { return creationDate; }
+    public Company setCreationDate(LocalDateTime creationDate) { this.creationDate = creationDate; return this; }
 
-    public String getDocument() {
-        return document;
-    }
+    public LocalDateTime getUpdateDate() { return updateDate; }
+    public Company setUpdateDate(LocalDateTime updateDate) { this.updateDate = updateDate; return this; }
 
-    public Company setDocument(String document) {
-        this.document = document;
-        return this;
-    }
+    public String getName() { return name; }
+    public Company setName(String name) { this.name = name; return this; }
 
-    public String getName() {
-        return name;
-    }
+    public DocumentType getDocumentType() { return documentType; }
+    public Company setDocumentType(DocumentType documentType) { this.documentType = documentType; return this; }
 
-    public Company setName(String name) {
-        this.name = name;
-        return this;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Company other = (Company) obj;
-        return getId().equals(other.getId());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(getId());
-    }
+    public String getDocument() { return document; }
+    public Company setDocument(String document) { this.document = document; return this; }
 }

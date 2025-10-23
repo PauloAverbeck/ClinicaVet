@@ -58,6 +58,7 @@ public class AppUserService {
      * Observação: se passwordHash for null e houver provisória, o Repository
      * garante NOT NULL gravando a provisória também em password_hash.
      */
+    @Transactional
     public long create(String name,
                        String email,
                        String passwordHash,
@@ -94,15 +95,17 @@ public class AppUserService {
     }
 
     /** Atualiza dados básicos (email, nome) com optimistic locking. */
+    @Transactional
     public void updateBasics(AppUser user) throws SQLException {
         user.setEmail(normalizeEmail(user.getEmail()));
         repo.updateDadosBasicos(user);
     }
 
     /** Salva (insert ou update) */
+    @Transactional
     public void save(AppUser user) throws SQLException {
         if (user.getId() == 0) {
-            user.setEmail(normalizeEmail(user.getEmail())); // 👈 adicione isto
+            user.setEmail(normalizeEmail(user.getEmail()));
             repo.insertWithProvisional(user);
         } else {
             updateBasics(user);
@@ -110,6 +113,7 @@ public class AppUserService {
     }
 
     /** Hard delete por ID. */
+    @Transactional
     public void deleteById(long id) throws SQLException {
         repo.deleteById(id);
     }

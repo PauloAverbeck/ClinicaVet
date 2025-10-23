@@ -1,10 +1,14 @@
 package com.example.application.classes.views;
 
+import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
+import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.CompanyService;
 import com.example.application.classes.CurrentUserService;
 import com.example.application.classes.DocumentType;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H1;
@@ -19,7 +23,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Empresas")
-@Route("companies/new")
+@Route(value = "company/new", layout = MainLayout.class)
 @Menu(title = "Register Company", icon = "la la-building", order = 6)
 @AnonymousAllowed //TODO trocar para acesso autenticado quando implementar segurança
 public class CompanyView extends VerticalLayout {
@@ -29,7 +33,7 @@ public class CompanyView extends VerticalLayout {
     private final TextField name = new TextField("Nome da empresa");
     private final ComboBox<DocumentType> cbDocType = new ComboBox<>("Tipo de documento");
     private final TextField document = new TextField("Documento");
-    private final Button save = new Button("Salvar");
+    private final Button saveBtn = new Button("Salvar");
 
     @Autowired
     public CompanyView(CompanyService companyService, CurrentUserService currentUserService) {
@@ -40,7 +44,16 @@ public class CompanyView extends VerticalLayout {
         setPadding(true);
         setSpacing(true);
 
-        add(new H1("Cadastrar empresa"));
+        var header = new ViewToolbar("Register Company");
+        add(header);
+
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
+
+        var content = body.wrapper();
+
+        H1 title = new H1("Cadastrar empresa");
 
         cbDocType.setItems(DocumentType.values());
         cbDocType.setRequiredIndicatorVisible(true);
@@ -53,12 +66,13 @@ public class CompanyView extends VerticalLayout {
                     : "5 a 9 caracteres alfanuméricos");
         });
 
-        save.addClickShortcut(Key.ENTER);
-        save.addClickListener(e -> onSave());
+        saveBtn.addClickShortcut(Key.ENTER);
+        saveBtn.addClickListener(e -> onSave());
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        FormLayout form = new FormLayout(name, cbDocType, document, save);
+        FormLayout form = new FormLayout(name, cbDocType, document, saveBtn);
         form.setMaxWidth("640px");
-        add(form);
+        content.add(title, form);
     }
 
     private void onSave() {

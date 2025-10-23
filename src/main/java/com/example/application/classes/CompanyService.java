@@ -10,9 +10,11 @@ import java.util.Optional;
 @Service
 public class CompanyService {
     private final CompanyRepository companyRepository;
+    private final UserCompanyService userCompanyService;
 
-    public CompanyService(CompanyRepository companyRepository) {
+    public CompanyService(CompanyRepository companyRepository, UserCompanyService userCompanyService) {
         this.companyRepository = companyRepository;
+        this.userCompanyService = userCompanyService;
     }
 
     /* CREATE */
@@ -32,6 +34,13 @@ public class CompanyService {
                 .setDocument(document);
 
         return companyRepository.insert(company);
+    }
+
+    @Transactional
+    public long createForUser(long createdByUserId, String name, DocumentType documentType, String document) throws SQLException {
+        long companyId = create(name, documentType, document);
+        userCompanyService.linkAsAdmin(createdByUserId, createdByUserId, companyId);
+        return companyId;
     }
 
     /* READ */
@@ -120,5 +129,4 @@ public class CompanyService {
             }
         }
     }
-
 }

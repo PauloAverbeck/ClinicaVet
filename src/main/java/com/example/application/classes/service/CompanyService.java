@@ -1,5 +1,8 @@
-package com.example.application.classes;
+package com.example.application.classes.service;
 
+import com.example.application.classes.DocumentType;
+import com.example.application.classes.model.Company;
+import com.example.application.classes.repository.CompanyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

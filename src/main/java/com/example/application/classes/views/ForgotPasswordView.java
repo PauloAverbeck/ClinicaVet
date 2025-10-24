@@ -3,7 +3,7 @@ package com.example.application.classes.views;
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
-import com.example.application.classes.AppUserService;
+import com.example.application.classes.service.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;

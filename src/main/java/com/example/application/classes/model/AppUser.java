@@ -1,6 +1,8 @@
-package com.example.application.classes;
+package com.example.application.classes.model;
 
+import com.example.application.classes.AbstractEntity;
 import org.jspecify.annotations.Nullable;
+
 import java.time.LocalDateTime;
 
 public class AppUser extends AbstractEntity {

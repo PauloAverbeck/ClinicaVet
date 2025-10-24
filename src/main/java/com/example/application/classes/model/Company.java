@@ -1,4 +1,6 @@
-package com.example.application.classes;
+package com.example.application.classes.model;
+
+import com.example.application.classes.DocumentType;
 
 import java.time.LocalDateTime;
 

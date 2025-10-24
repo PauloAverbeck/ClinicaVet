@@ -1,5 +1,6 @@
-package com.example.application.classes;
+package com.example.application.classes.repository;
 
+import com.example.application.classes.model.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 

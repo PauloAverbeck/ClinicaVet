@@ -1,5 +1,7 @@
-package com.example.application.classes;
+package com.example.application.classes.service;
 
+import com.example.application.classes.model.UserCompanyLink;
+import com.example.application.classes.repository.UserCompanyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

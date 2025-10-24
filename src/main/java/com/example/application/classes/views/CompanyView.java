@@ -3,9 +3,9 @@ package com.example.application.classes.views;
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
-import com.example.application.classes.CompanyService;
-import com.example.application.classes.CurrentUserService;
 import com.example.application.classes.DocumentType;
+import com.example.application.classes.service.CompanyService;
+import com.example.application.classes.service.CurrentUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -41,6 +41,8 @@ public class CompanyView extends VerticalLayout {
         this.currentUserService = currentUserService;
 
         setSizeFull();
+        setJustifyContentMode(JustifyContentMode.CENTER);
+        setAlignItems(Alignment.CENTER);
         setPadding(true);
         setSpacing(true);
 

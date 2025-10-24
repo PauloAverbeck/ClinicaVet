@@ -1,5 +1,8 @@
-package com.example.application.classes;
+package com.example.application.classes.service;
 
+import com.example.application.classes.ResetMailer;
+import com.example.application.classes.model.AppUser;
+import com.example.application.classes.repository.AppUserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

@@ -7,12 +7,12 @@
 - [x] Implementar SignUp -> email com senha provisória;
 - [x] Implementar Primeiro Login (confirmação) -> promove senha provisória para oficial;
 - [x] Telas Vaadin: SignUp, Login/Confirm, ForgotPassword (gera nova provisória);
-- [ ] Serviço de validação de documento (CPF/CNPJ/PASSAPORTE) básico.
+- [x] Serviço de validação de documento (CPF/CNPJ/PASSAPORTE) básico.
 #
 - **Semana 2 - Empresa e vínculo**
 - [ ] Telas: CompanyForm/List, UserCompanyView;
-- [ ] Ao criar empresa, vincular quem criou como admin;
-- [ ] Listagem de vínculos, criar/remover (soft-delete), checagem de permissões (is_admin);
+- [x] Ao criar empresa, vincular quem criou como admin;
+- [x] Listagem de vínculos, criar/remover (soft-delete), checagem de permissões (is_admin);
 - [ ] Guard no app para exigir vínculo ativo antes de acessar módulos da empresa.
 #
 - **Semana 3 - Pessoas e Animais**

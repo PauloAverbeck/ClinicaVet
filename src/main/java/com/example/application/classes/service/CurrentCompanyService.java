@@ -1,67 +1,81 @@
 package com.example.application.classes.service;
 
-import com.example.application.classes.CurrentCompanyHolder;
 import com.example.application.classes.model.Company;
 import com.example.application.classes.model.UserCompanyLink;
 import com.example.application.classes.repository.CompanyRepository;
+import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class CurrentCompanyService {
 
-    private final CurrentCompanyHolder holder;
-    private final UserCompanyService userCompanyService;
     private final CompanyRepository companyRepository;
+    private final UserCompanyService userCompanyService;
+    private final ObjectFactory<CurrentCompanyHolder> holderFactory;
 
-    public CurrentCompanyService(CurrentCompanyHolder holder,
+    public CurrentCompanyService(CompanyRepository companyRepository,
                                  UserCompanyService userCompanyService,
-                                 CompanyRepository companyRepository) {
-        this.holder = holder;
-        this.userCompanyService = userCompanyService;
+                                 ObjectFactory<CurrentCompanyHolder> holderFactory) {
         this.companyRepository = companyRepository;
+        this.userCompanyService = userCompanyService;
+        this.holderFactory = holderFactory;
+    }
+
+    private CurrentCompanyHolder holder() {
+        return holderFactory.getObject();
+    }
+
+    public boolean hasSelection() {
+        return holder().isSelected();
     }
 
     public long activeCompanyIdOrThrow() {
-        if (holder.isEmpty()) {
-            throw new IllegalStateException("Nenhuma empresa ativa selecionada.");
+        if (!holder().isSelected()) {
+            throw new IllegalStateException("Nenhuma empresa selecionada para esta sessão.");
         }
-        return holder.getCompanyId();
+        return holder().getCompanyId();
     }
 
-    public Optional<Long> activeCompanyId() {
-        return Optional.ofNullable(holder.getCompanyId());
+    public String activeCompanyNameOrNull() {
+        return holder().getCompanyName();
     }
 
-    public Optional<String> activeCompanyName() {
-        return Optional.ofNullable(holder.getCompanyName());
+    @Transactional(readOnly = true)
+    public void selectCompanyForUser(long userId, long companyId) throws SQLException {
+        var linkOpt = userCompanyService.findActiveLink(userId, companyId);
+        if (linkOpt.isEmpty()) {
+            throw new IllegalStateException("Usuário não possui vínculo ativo com esta empresa.");
+        }
+        UserCompanyLink link = linkOpt.get();
+
+        Company c = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalStateException("Empresa não encontrada: id=" + companyId));
+
+        holder().set(c.getId(), c.getName(), link.isAdmin());
     }
 
-    public void clear() {
-        holder.clear();
+    @Transactional(readOnly = true)
+    public boolean ensureAutoSelectionIfSingle(long userId) throws SQLException {
+        if (holder().isSelected()) return true;
+
+        List<UserCompanyLink> links = userCompanyService.companiesOf(userId);
+        if (links.size() == 1) {
+            long companyId = links.get(0).getCompanyId();
+            selectCompanyForUser(userId, companyId);
+            return true;
+        }
+        return false;
     }
 
-    public List<UserCompanyLink> companiesOf(long userId) throws SQLException {
-        return userCompanyService.companiesOf(userId);
+    public void clearSelection() {
+        holder().clear();
     }
 
-    public void setActiveCompany(long userId, long companyId) throws Exception {
-        var linkOpt = userCompanyService.findActiveLink(userId, companyId)
-                .orElseThrow(() -> new IllegalStateException("O usuário não está vinculado à empresa selecionada.")) ;
-
-        var company = companyRepository.findById(companyId)
-                .map(Company::getName)
-                .orElse("(empresa não encontrada)");
-
-        holder.setCompanyId(linkOpt.getCompanyId(), company);
-    }
-
-    public boolean isActiveCompanyAdmin(long userId) throws SQLException {
-        Long companyId = holder.getCompanyId();
-        if (companyId == null) return false;
-        return userCompanyService.isAdmin(userId, companyId);
+    public boolean isAdmin() {
+        return holder().isSelected() && holder().isAdmin();
     }
 }

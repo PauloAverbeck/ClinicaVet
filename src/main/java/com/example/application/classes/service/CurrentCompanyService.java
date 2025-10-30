@@ -71,6 +71,38 @@ public class CurrentCompanyService {
         return false;
     }
 
+
+    /** Metodos auxiliares provisorios pré-segurança **/
+
+    @Transactional(readOnly = true)
+    public boolean selectFirstCompanyOf(long userId) throws SQLException {
+        if (holder().isSelected()) return true;
+
+        List<UserCompanyLink> links = userCompanyService.companiesOf(userId);
+        if (links.isEmpty()) {
+            return false;
+        }
+
+        UserCompanyLink first = links.get(0);
+        Company c = companyRepository.findById(first.getCompanyId())
+                .orElseThrow(() -> new IllegalStateException("Empresa não encontrada: id=" + first.getCompanyId()));
+
+        holder().set(c.getId(), c.getName(), first.isAdmin());
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean selectFirstCompanyGlobal() throws SQLException {
+        if (holder().isSelected()) return true;
+
+        List<Company> all = companyRepository.listAll();
+        if (all.isEmpty()) return false;
+
+        Company first = all.get(0);
+        holder().set(first.getId(), first.getName(), true); // true = admin provisório
+        return true;
+    }
+
     public void clearSelection() {
         holder().clear();
     }

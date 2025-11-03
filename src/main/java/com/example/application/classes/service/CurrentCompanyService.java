@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CurrentCompanyService {
@@ -29,10 +31,12 @@ public class CurrentCompanyService {
         return holderFactory.getObject();
     }
 
+    /** Sessão já tem empresa selecionada? */
     public boolean hasSelection() {
         return holder().isSelected();
     }
 
+    /** Id da empresa ativa na sessão, ou lança se não houver. */
     public long activeCompanyIdOrThrow() {
         if (!holder().isSelected()) {
             throw new IllegalStateException("Nenhuma empresa selecionada para esta sessão.");
@@ -40,13 +44,25 @@ public class CurrentCompanyService {
         return holder().getCompanyId();
     }
 
+    /** Nome da empresa ativa (ou null). */
     public String activeCompanyNameOrNull() {
         return holder().getCompanyName();
     }
 
+    /** True se o vínculo atual é admin. */
+    public boolean isAdmin() {
+        return holder().isSelected() && holder().isAdmin();
+    }
+
+    /** Limpa seleção da sessão. */
+    public void clearSelection() {
+        holder().clear();
+    }
+
+    /** Faz a seleção de uma empresa do usuário, validando vínculo ativo. */
     @Transactional(readOnly = true)
     public void selectCompanyForUser(long userId, long companyId) throws SQLException {
-        var linkOpt = userCompanyService.findActiveLink(userId, companyId);
+        Optional<UserCompanyLink> linkOpt = userCompanyService.findActiveLink(userId, companyId);
         if (linkOpt.isEmpty()) {
             throw new IllegalStateException("Usuário não possui vínculo ativo com esta empresa.");
         }
@@ -58,6 +74,10 @@ public class CurrentCompanyService {
         holder().set(c.getId(), c.getName(), link.isAdmin());
     }
 
+    /**
+     * Se o usuário só tem 1 vínculo ativo, seleciona automaticamente.
+     * @return true se selecionou, false caso contrário.
+     */
     @Transactional(readOnly = true)
     public boolean ensureAutoSelectionIfSingle(long userId) throws SQLException {
         if (holder().isSelected()) return true;
@@ -71,43 +91,17 @@ public class CurrentCompanyService {
         return false;
     }
 
-
-    /** Metodos auxiliares provisorios pré-segurança **/
-
+    /**
+     * Lista as empresas para as quais o usuário possui vínculo ativo.
+     * (Usa o CompanyRepository existente.)
+     */
     @Transactional(readOnly = true)
-    public boolean selectFirstCompanyOf(long userId) throws SQLException {
-        if (holder().isSelected()) return true;
-
+    public List<Company> listSelectableForUser(long userId) throws SQLException {
         List<UserCompanyLink> links = userCompanyService.companiesOf(userId);
-        if (links.isEmpty()) {
-            return false;
+        List<Company> result = new ArrayList<>(links.size());
+        for (UserCompanyLink link : links) {
+            companyRepository.findById(link.getCompanyId()).ifPresent(result::add);
         }
-
-        UserCompanyLink first = links.get(0);
-        Company c = companyRepository.findById(first.getCompanyId())
-                .orElseThrow(() -> new IllegalStateException("Empresa não encontrada: id=" + first.getCompanyId()));
-
-        holder().set(c.getId(), c.getName(), first.isAdmin());
-        return true;
-    }
-
-    @Transactional(readOnly = true)
-    public boolean selectFirstCompanyGlobal() throws SQLException {
-        if (holder().isSelected()) return true;
-
-        List<Company> all = companyRepository.listAll();
-        if (all.isEmpty()) return false;
-
-        Company first = all.get(0);
-        holder().set(first.getId(), first.getName(), true); // true = admin provisório
-        return true;
-    }
-
-    public void clearSelection() {
-        holder().clear();
-    }
-
-    public boolean isAdmin() {
-        return holder().isSelected() && holder().isAdmin();
+        return result;
     }
 }

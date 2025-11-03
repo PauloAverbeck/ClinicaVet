@@ -3,16 +3,17 @@ package com.example.application.classes.views;
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
+import com.example.application.classes.repository.AppUserRepository;
 import com.example.application.classes.service.AppUserService;
 import com.example.application.classes.service.AppUserService.LoginResult;
+import com.example.application.classes.service.CurrentCompanyService;
+import com.example.application.classes.service.CurrentUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
-import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -26,13 +27,22 @@ import com.vaadin.flow.router.Route;
 @Menu(title = "Login", icon = "la la-sign-in-alt", order = 1)
 public class LoginView extends VerticalLayout {
     private final AppUserService appUserService;
+    private final CurrentUserService currentUserService;
+    private final CurrentCompanyService currentCompanyService;
+    private final AppUserRepository appUserRepository;
 
     private final EmailField emailField = new EmailField("E-mail");
     private final PasswordField passwordField = new PasswordField("Senha");
     private final Button loginBtn = new Button("Entrar / Confirmar");
 
-    public LoginView(AppUserService appUserService) {
+    public LoginView(AppUserService appUserService,
+                     CurrentUserService currentUserService,
+                     CurrentCompanyService currentCompanyService,
+                     AppUserRepository appUserRepository) {
         this.appUserService = appUserService;
+        this.currentUserService = currentUserService;
+        this.currentCompanyService = currentCompanyService;
+        this.appUserRepository = appUserRepository;
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
@@ -84,17 +94,7 @@ public class LoginView extends VerticalLayout {
         try {
             LoginResult res = appUserService.loginOrConfirm(email, pass);
             switch (res) {
-                case CONFIRMED -> {
-                    Dialog d = new Dialog();
-                    d.setHeaderTitle("E-mail confirmado!");
-                    d.add(new Paragraph("Sua senha provisória foi promovida."));
-                    d.add(new Paragraph("Você já pode continuar usando o sistema."));
-                    Button ok = new Button("OK", ev -> d.close());
-                    d.getFooter().add(ok);
-                    d.open();
-                    passwordField.clear();
-                }
-                case LOGGED_IN -> {
+                case LOGGED_IN, CONFIRMED -> {
                     Notification.show("Login realizado com sucesso.", 3000, Notification.Position.MIDDLE);
                     UI.getCurrent().navigate("home");
                 }

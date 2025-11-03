@@ -19,12 +19,14 @@ public class AppUserService {
     private final AppUserRepository repo;
     private final PasswordEncoder passwordEncoder;
     private final ResetMailer resetMailer;
+    private final CurrentUserService currentUserService;
 
     @Autowired
-    public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder, ResetMailer resetMailer) {
+    public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder, ResetMailer resetMailer, CurrentUserService currentUserService) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
         this.resetMailer = resetMailer;
+        this.currentUserService = currentUserService;
     }
 
     public enum LoginResult {
@@ -33,21 +35,27 @@ public class AppUserService {
         INVALID
     }
 
+    @Transactional
     public LoginResult loginOrConfirm(String email, String plainPassword) throws SQLException {
         email = normalizeEmail(email);
         plainPassword = plainPassword == null ? null : plainPassword.trim();
 
-        AppUser user = repo.findByEmail(email)
-                .orElse(null);
+        AppUser user = repo.findByEmail(email).orElse(null);
         if (user == null) return LoginResult.INVALID;
 
+        // Senha provisória (primeiro login)
         String prov = user.getProvisionalPasswordHash();
         if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
+            // promove e já considera logado
             boolean promoted = repo.promoteProvisionalToOfficial(user.getId());
-            return LoginResult.CONFIRMED;
+            return promoted ? LoginResult.LOGGED_IN : LoginResult.INVALID;
         }
+
+
+        // Login normal
         String official = user.getPasswordHash();
         if (official != null && passwordEncoder.matches(plainPassword, official)) {
+            currentUserService.onLogin(user.getId(), user.getEmail());
             return LoginResult.LOGGED_IN;
         }
 

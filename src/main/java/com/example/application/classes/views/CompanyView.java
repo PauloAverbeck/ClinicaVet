@@ -79,7 +79,7 @@ public class CompanyView extends VerticalLayout {
 
     private void onSave() {
         try {
-            long userId = currentUserService.currentUserIdOrThrow();
+            long userId = currentUserService.requireUserId();
             long id = companyService.createForUser(userId, name.getValue(), cbDocType.getValue(), document.getValue());
             Notification.show("Empresa criada com sucesso! ID: " + id, 5000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);

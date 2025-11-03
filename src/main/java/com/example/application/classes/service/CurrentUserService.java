@@ -1,26 +1,34 @@
 package com.example.application.classes.service;
 
-import com.example.application.classes.repository.AppUserRepository;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.stereotype.Service;
-
-import java.sql.SQLException;
 
 @Service
 public class CurrentUserService {
-    private final AppUserRepository appUserRepository;
+    private final ObjectFactory<CurrentUserHolder> holderFactory;
 
-    public CurrentUserService(AppUserRepository appUserRepository) {
-        this.appUserRepository = appUserRepository;
+    public CurrentUserService(ObjectFactory<CurrentUserHolder> holderFactory) {
+        this.holderFactory = holderFactory;
     }
 
-    public long currentUserIdOrThrow() throws SQLException {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getName() == null) {
-            throw new IllegalStateException("Usuário não autenticado.");
+    private CurrentUserHolder holder() {
+        return holderFactory.getObject();
+    }
+
+    public boolean isLoggedIn() { return holder().isLoggedIn(); }
+
+    public long requireUserId() {
+        if (!holder().isLoggedIn()) {
+            throw new IllegalStateException("Usuário não autenticado na sessão.");
         }
-        String email = authentication.getName();
-        return appUserRepository.findByEmail(email.toLowerCase().trim()).orElseThrow(() -> new IllegalStateException("Usuário não encontrado: " + email)).getId();
+        return holder().getUserId();
+    }
+
+    public void onLogin(long userId, String email) {
+        holder().set(userId, email);
+    }
+
+    public void logout() {
+        holder().clear();
     }
 }

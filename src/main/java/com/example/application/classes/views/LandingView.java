@@ -15,8 +15,8 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @PageTitle("ClinicaVet")
 @Route(value = "", layout = MainLayout.class)
-@RouteAlias(value = "home", layout = MainLayout.class)
-@Menu(title = "Home", icon = "la la-home", order = 0)
+@RouteAlias(value = "landing", layout = MainLayout.class)
+@Menu(title = "Landing", icon = "la la-home", order = 0)
 @AnonymousAllowed
 public class LandingView extends VerticalLayout {
 

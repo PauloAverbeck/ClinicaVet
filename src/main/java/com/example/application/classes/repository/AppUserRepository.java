@@ -177,16 +177,16 @@ public class AppUserRepository {
         UPDATE app_user
            SET password_hash   = prov_pw_hash,
                prov_pw_hash    = NULL,
-               email_conf_time = CURRENT_TIMESTAMP,
-               version = version + 1
+               email_conf_time = COALESCE(email_conf_time, CURRENT_TIMESTAMP),
+               update_date     = CURRENT_TIMESTAMP,
+               version         = version + 1
          WHERE id = ?
            AND prov_pw_hash IS NOT NULL
     """;
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, userId);
-            int rows = ps.executeUpdate();
-            return rows > 0;
+            return ps.executeUpdate() == 1;
         }
     }
 
@@ -220,6 +220,7 @@ public class AppUserRepository {
         UPDATE app_user
            SET password_hash = ?,
                prov_pw_hash = NULL,
+               email_conf_time = CURRENT_TIMESTAMP,
                update_date = CURRENT_TIMESTAMP,
                version = version + 1
          WHERE id = ?

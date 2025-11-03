@@ -1,148 +1,127 @@
 package com.example.application.classes.views;
 
+import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.CenteredBody;
+import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Company;
-import com.example.application.classes.model.UserCompanyLink;
-import com.example.application.classes.repository.CompanyRepository;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
-import com.example.application.classes.service.UserCompanyService;
-import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-
-@PageTitle("Selecionar Empresa")
-@Route("company/select")
-@Menu(title = "Select Company", icon = "la la-building", order = 7)
-@AnonymousAllowed
+@PageTitle("Selecionar empresa")
+@Route(value = "company/select", layout = MainLayout.class)
+@Menu(title = "Selecionar empresa", icon = "la la-building", order = 2)
 public class CompanySelectView extends VerticalLayout {
 
-    private final CurrentCompanyService currentCompanyService;
     private final CurrentUserService currentUserService;
-    private final UserCompanyService userCompanyService;
-    private final CompanyRepository companyRepository;
+    private final CurrentCompanyService currentCompanyService;
 
-    private final ComboBox<CompanyOption> companyBox = new ComboBox<>("Empresa");
-    private final Button selectBtn = new Button("Usar esta empresa");
+    private final Grid<Company> grid = new Grid<>(Company.class, false);
+    private final Button confirmBtn = new Button("Usar esta empresa");
+    private final Button refreshBtn = new Button("Atualizar lista");
+    private final Button createBtn  = new Button("Criar empresa");
 
-    public CompanySelectView(CurrentCompanyService currentCompanyService,
-                             CurrentUserService currentUserService,
-                             UserCompanyService userCompanyService,
-                             CompanyRepository companyRepository) {
-        this.currentCompanyService = currentCompanyService;
+    public CompanySelectView(CurrentUserService currentUserService,
+                             CurrentCompanyService currentCompanyService) {
         this.currentUserService = currentUserService;
-        this.userCompanyService = userCompanyService;
-        this.companyRepository = companyRepository;
+        this.currentCompanyService = currentCompanyService;
 
         setSizeFull();
-        setPadding(true);
         setSpacing(true);
 
-        add(new H1("Selecionar empresa ativa"));
+        var header = new ViewToolbar("Selecionar empresa");
+        add(header);
 
-        companyBox.setWidth("420px");
-        companyBox.setItemLabelGenerator(CompanyOption::label);
+        var body = new CenteredBody();
+        add(body);
+        setFlexGrow(1, body);
 
-        selectBtn.addClickShortcut(Key.ENTER);
-        selectBtn.addClickListener(e -> onSelect());
+        var content = body.wrapper();
+        content.setWidthFull();
+        content.getStyle().set("display", "flex");
+        content.getStyle().set("flex-direction", "column");
+        content.getStyle().set("gap", "var(--lumo-space-m)");
 
-        add(companyBox, selectBtn, new Paragraph("""
-            A empresa selecionada ficará ativa nesta sessão, permitindo cadastrar/editar dados
-            (pessoas, animais, atendimentos) dentro do escopo dessa empresa.
-        """));
+        H1 title = new H1("Escolha com qual empresa você deseja trabalhar");
 
-        loadData();
-        autoSelectIfSingle();
-    }
+        grid.addColumn(Company::getName).setHeader("Nome").setAutoWidth(true).setFlexGrow(1);
+        grid.addColumn(Company::getDocument).setHeader("Documento").setAutoWidth(true);
+        grid.setSelectionMode(Grid.SelectionMode.SINGLE);
+        grid.setHeight("420px");
 
-    private void loadData() {
+        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirmBtn.addClickListener(e -> onConfirm());
+        refreshBtn.addClickListener(e -> {
+            try { loadData(); } catch (Exception ex) { showError(ex); }
+        });
+
+        createBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_TERTIARY);
+        createBtn.addClickListener(e -> UI.getCurrent().navigate("companies/new"));
+
+        HorizontalLayout actions = new HorizontalLayout(confirmBtn, refreshBtn, createBtn);
+        actions.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.BASELINE);
+
+        content.add(title, new Paragraph("Selecione uma empresa e clique em “Usar esta empresa”."), grid, actions);
+
         try {
-            long userId = currentUserService.currentUserIdOrThrow();
-            List<UserCompanyLink> links = userCompanyService.companiesOf(userId);
-
-            if (links.isEmpty()) {
-                Notification.show("Você ainda não possui vínculo com nenhuma empresa.", 6000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_PRIMARY);
-                add(new Paragraph("Crie uma empresa em “Empresas” > “Register Company” para continuar."));
-                companyBox.setItems(new ArrayList<>());
-                selectBtn.setEnabled(false);
+            long uid = currentUserService.requireUserId(); // << substituído aqui
+            if (currentCompanyService.ensureAutoSelectionIfSingle(uid)) {
+                Notification.show("Empresa selecionada automaticamente.", 2500, Notification.Position.MIDDLE);
+                UI.getCurrent().navigate("home");
                 return;
             }
-
-            List<CompanyOption> items = new ArrayList<>();
-            for (UserCompanyLink link : links) {
-                companyRepository.findById(link.getCompanyId()).ifPresent(c ->
-                        items.add(new CompanyOption(c, link.isAdmin())));
-            }
-            companyBox.setItems(items);
-            if (currentCompanyService.hasSelection()) {
-                Long activeId = currentCompanyService.activeCompanyIdOrThrow();
-                items.stream()
-                        .filter(opt -> Objects.equals(opt.company().getId(), activeId))
-                        .findFirst()
-                        .ifPresent(companyBox::setValue);
-            }
+            loadData();
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Falha ao carregar suas empresas: " + ex.getMessage(), 6000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            showError(ex);
         }
     }
 
-    private void autoSelectIfSingle() {
-        try {
-            long userId = currentUserService.currentUserIdOrThrow();
-            boolean selected = currentCompanyService.ensureAutoSelectionIfSingle(userId);
-            if (selected) {
-                Notification.show("Empresa selecionada automaticamente.", 3000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                getUI().ifPresent(ui -> ui.navigate("home"));
-            }
-        } catch (Exception ex) {
+    private void loadData() throws SQLException {
+        grid.setItems(List.of());
+        long uid = currentUserService.requireUserId(); // << substituído aqui
+        List<Company> items = currentCompanyService.listSelectableForUser(uid);
+        grid.setItems(items);
+
+        boolean empty = items.isEmpty();
+        confirmBtn.setEnabled(!empty);
+        if (empty) {
+            Notification.show("Você ainda não possui empresas. Crie uma para continuar.", 4000, Notification.Position.BOTTOM_CENTER);
         }
     }
 
-    private void onSelect() {
-        CompanyOption opt = companyBox.getValue();
-        if (opt == null) {
-            Notification.show("Escolha uma empresa.", 3000, Notification.Position.TOP_CENTER);
+    private void onConfirm() {
+        Company selected = grid.asSingleSelect().getValue();
+        if (selected == null) {
+            Notification.show("Selecione uma empresa.", 2500, Notification.Position.MIDDLE);
             return;
         }
         try {
-            long userId = currentUserService.currentUserIdOrThrow();
-            long companyId = opt.company().getId();
-
-            currentCompanyService.selectCompanyForUser(userId, companyId);
-
-            Notification.show("Empresa ativa: " + opt.company().getName(), 4000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-            // Redireciona para a área que você preferir:
-            getUI().ifPresent(ui -> ui.navigate("home"));
-        } catch (SQLException | IllegalStateException ex) {
-            Notification.show("Não foi possível selecionar esta empresa: " + ex.getMessage(), 6000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            long uid = currentUserService.requireUserId(); // << substituído aqui
+            currentCompanyService.selectCompanyForUser(uid, selected.getId());
+            Notification.show("Empresa selecionada: " + selected.getName(), 2500, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("home");
+        } catch (Exception ex) {
+            showError(ex);
         }
     }
 
-    /* Helper local para exibir nome + badge admin */
-    private record CompanyOption(Company company, boolean admin) {
-        String label() {
-            return company.getName() + (admin ? "  • ADMIN" : "");
-        }
+    private void showError(Exception ex) {
+        ex.printStackTrace();
+        Notification.show("Falha: " + ex.getMessage(), 4000, Notification.Position.MIDDLE);
     }
 }

@@ -52,7 +52,7 @@ public class HomeView extends VerticalLayout {
         H1 title = new H1("Bem-vindo ao ClinicaVet");
 
         // Ações
-        Button changeCompany = new Button("Trocar empresa", e -> UI.getCurrent().navigate("select-company"));
+        Button changeCompany = new Button("Trocar empresa", e -> UI.getCurrent().navigate("company/select"));
         changeCompany.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
         Button logout = new Button("Sair", e -> {

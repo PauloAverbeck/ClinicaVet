@@ -41,8 +41,13 @@ public class UserCompanyService {
     }
 
     public List<UserCompanyLink> companiesOf(long userId) throws SQLException {
-        return userCompanyRepository.listActiveByUser(userId);
+        return userCompanyRepository.listActiveLinksByUser(userId);
     }
+
+    public List<CompanyChoice> companyChoicesFor(long userId) throws SQLException {
+        return userCompanyRepository.listActiveCompanyChoicesByUser(userId);
+    }
+
 
     public List<UserCompanyLink> membersOf(long companyId) throws SQLException {
         return userCompanyRepository.listActiveByCompany(companyId);

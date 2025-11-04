@@ -82,9 +82,9 @@ public class CurrentCompanyService {
     public boolean ensureAutoSelectionIfSingle(long userId) throws SQLException {
         if (holder().isSelected()) return true;
 
-        List<UserCompanyLink> links = userCompanyService.companiesOf(userId);
-        if (links.size() == 1) {
-            long companyId = links.get(0).getCompanyId();
+        List<CompanyChoice> choices = userCompanyService.companyChoicesFor(userId);
+        if (choices.size() == 1) {
+            long companyId = choices.get(0).id;
             selectCompanyForUser(userId, companyId);
             return true;
         }
@@ -97,10 +97,10 @@ public class CurrentCompanyService {
      */
     @Transactional(readOnly = true)
     public List<Company> listSelectableForUser(long userId) throws SQLException {
-        List<UserCompanyLink> links = userCompanyService.companiesOf(userId);
-        List<Company> result = new ArrayList<>(links.size());
-        for (UserCompanyLink link : links) {
-            companyRepository.findById(link.getCompanyId()).ifPresent(result::add);
+        List<CompanyChoice> choices = userCompanyService.companyChoicesFor(userId);
+        List<Company> result = new ArrayList<>(choices.size());
+        for (CompanyChoice choice : choices) {
+            companyRepository.findById(choice.id).ifPresent(result::add);
         }
         return result;
     }

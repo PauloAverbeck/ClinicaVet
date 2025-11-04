@@ -1,6 +1,7 @@
 package com.example.application.classes.repository;
 
 import com.example.application.classes.model.UserCompanyLink;
+import com.example.application.classes.service.CompanyChoice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -72,15 +73,59 @@ public class UserCompanyRepository {
         }
     }
 
-    public List<UserCompanyLink> listActiveByUser(long userId) throws SQLException {
-        final String sql = baseSelect() + " WHERE uc.user_id=? AND uc.deleted_at IS NULL ORDER BY c.name";
+    public List<CompanyChoice> listActiveCompanyChoicesByUser(long userId) throws SQLException {
+        final String sql = """
+        SELECT
+            uc.company_id,
+            c.name,
+            uc.admin
+        FROM user_company uc
+        JOIN company c ON c.id = uc.company_id
+        WHERE uc.user_id = ?
+        ORDER BY c.name
+        """;
+
         try (Connection con = dataSource.getConnection();
-        PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
-                List<UserCompanyLink> out = new ArrayList<>();
-                while (rs.next()) out.add(map(rs));
-                return out;
+                List<CompanyChoice> list = new ArrayList<>();
+                while (rs.next()) {
+                    list.add(new CompanyChoice(
+                            rs.getLong("company_id"),
+                            rs.getString("name"),
+                            rs.getBoolean("admin")
+                    ));
+                }
+                return list;
+            }
+        }
+    }
+
+    public List<UserCompanyLink> listActiveLinksByUser(long userId) throws SQLException {
+        final String sql = """
+        SELECT
+            uc.user_id,
+            uc.company_id,
+            COALESCE(uc.admin, FALSE) AS admin
+        FROM user_company uc
+        WHERE uc.user_id = ?
+          AND (uc.active IS TRUE OR uc.active IS NULL)
+        ORDER BY uc.company_id
+        """;
+        try (var con = dataSource.getConnection();
+             var ps  = con.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (var rs = ps.executeQuery()) {
+                var list = new java.util.ArrayList<UserCompanyLink>();
+                while (rs.next()) {
+                    var link = new UserCompanyLink();
+                    link.setUserId(rs.getLong("user_id"));
+                    link.setCompanyId(rs.getLong("company_id"));
+                    link.setAdmin(rs.getBoolean("admin"));
+                    list.add(link);
+                }
+                return list;
             }
         }
     }

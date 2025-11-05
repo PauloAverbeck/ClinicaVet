@@ -20,6 +20,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import jakarta.annotation.security.PermitAll;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.List;
 @PageTitle("Selecionar empresa")
 @Route(value = "company/select", layout = MainLayout.class)
 @Menu(title = "Selecionar empresa", icon = "la la-building", order = 2)
+@PermitAll
 public class CompanySelectView extends VerticalLayout {
 
     private final CurrentUserService currentUserService;
@@ -91,15 +93,12 @@ public class CompanySelectView extends VerticalLayout {
         super.onAttach(event);
         try {
             if (!currentUserService.isLoggedIn()) {
-                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-                UI.getCurrent().navigate("login");
+                UI.getCurrent().navigate("home");
                 return;
             }
-
             long uid = currentUserService.requireUserId();
-
             if (currentCompanyService.ensureAutoSelectionIfSingle(uid)) {
-                Notification.show("Empresa selecionada automaticamente.", 2000, Notification.Position.MIDDLE);
+                Notification.show("Empresa selecionada automaticamente.", 1500, Notification.Position.MIDDLE);
                 UI.getCurrent().navigate("home");
                 return;
             }
@@ -116,10 +115,18 @@ public class CompanySelectView extends VerticalLayout {
         grid.setItems(items);
 
         boolean empty = items.isEmpty();
-        confirmBtn.setEnabled(!empty && grid.asSingleSelect().getValue() != null);
-        if (empty) {
-            Notification.show("Você ainda não possui empresas. Crie uma para continuar.", 4000, Notification.Position.BOTTOM_CENTER);
+        if (items.isEmpty()) {
+            Notification.show("Você ainda não possui empresas. Crie uma para continuar.", 3000, Notification.Position.BOTTOM_CENTER);
+            createBtn.focus();
+            return;
         }
+        if (items.size() == 1) {
+            grid.select(items.getFirst());
+        } else {
+            grid.focus();
+        }
+
+        confirmBtn.setEnabled(!empty && grid.asSingleSelect().getValue() != null);
     }
 
     private void onConfirm() {

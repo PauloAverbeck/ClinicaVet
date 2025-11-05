@@ -15,10 +15,12 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @PageTitle("Criar conta")
 @Route(value = "signup", layout = MainLayout.class)
 @Menu(title = "Sign Up", icon = "la la-user-plus", order = 2)
+@AnonymousAllowed
 public class SignUpView extends VerticalLayout {
 
     private final AppUserService appUserService;

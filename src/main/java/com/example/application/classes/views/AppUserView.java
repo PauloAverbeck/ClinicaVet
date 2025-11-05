@@ -11,6 +11,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import jakarta.annotation.security.PermitAll;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -19,7 +20,7 @@ import java.util.Objects;
 @PageTitle("Users")
 @Route(value = "users", layout = MainLayout.class)
 @Menu(title = "Users", icon = "la la-users", order = 5)
-
+@PermitAll
 public class AppUserView extends Main {
 
     private final AppUserService userService;

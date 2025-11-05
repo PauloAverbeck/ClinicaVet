@@ -19,13 +19,13 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Empresas")
 @Route(value = "company/new", layout = MainLayout.class)
 @Menu(title = "Register Company", icon = "la la-building", order = 6)
-@AnonymousAllowed //TODO trocar para acesso autenticado quando implementar segurança
+@PermitAll
 public class CompanyView extends VerticalLayout {
     private final CompanyService companyService;
     private final CurrentUserService currentUserService;

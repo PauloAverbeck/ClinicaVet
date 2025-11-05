@@ -1,3 +1,4 @@
+/*
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
@@ -21,10 +22,12 @@ import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @PageTitle("Entrar / Confirmar")
 @Route(value = "login", layout = MainLayout.class)
 @Menu(title = "Login", icon = "la la-sign-in-alt", order = 1)
+@AnonymousAllowed
 public class LoginView extends VerticalLayout {
     private final AppUserService appUserService;
     private final CurrentUserService currentUserService;
@@ -113,4 +116,4 @@ public class LoginView extends VerticalLayout {
     }
 
     private static String val(String v) { return v == null ? null : v.trim(); }
-}
+}*/

@@ -104,4 +104,9 @@ public class CurrentCompanyService {
         }
         return result;
     }
+
+    @Transactional(readOnly = true)
+    public List<CompanyChoice> listSelectableChoicesForUser(long userId) throws SQLException {
+        return userCompanyService.companyChoicesFor(userId);
+    }
 }

@@ -1,3 +1,4 @@
+/*
 package com.example.application.classes;
 
 import com.zaxxer.hikari.HikariConfig;
@@ -5,9 +6,11 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import javax.sql.DataSource;
 
+*/
 /**
  * Fábrica para criar um DataSource (pool de conexões HikariCP)
- */
+ *//*
+
 public final class DataSourceFactory {
     private DataSourceFactory() {}
 
@@ -19,4 +22,4 @@ public final class DataSourceFactory {
         cfg.setMaximumPoolSize(10);
         return new HikariDataSource(cfg);
     }
-}
+}*/

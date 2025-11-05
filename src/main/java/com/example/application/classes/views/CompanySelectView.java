@@ -3,9 +3,10 @@ package com.example.application.classes.views;
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
-import com.example.application.classes.model.Company;
+import com.example.application.classes.service.CompanyChoice;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -31,7 +32,7 @@ public class CompanySelectView extends VerticalLayout {
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
 
-    private final Grid<Company> grid = new Grid<>(Company.class, false);
+    private final Grid<CompanyChoice> grid = new Grid<>(CompanyChoice.class, false);
     private final Button confirmBtn = new Button("Usar esta empresa");
     private final Button refreshBtn = new Button("Atualizar lista");
     private final Button createBtn  = new Button("Criar empresa");
@@ -59,29 +60,46 @@ public class CompanySelectView extends VerticalLayout {
 
         H1 title = new H1("Escolha com qual empresa você deseja trabalhar");
 
-        grid.addColumn(Company::getName).setHeader("Nome").setAutoWidth(true).setFlexGrow(1);
-        grid.addColumn(Company::getDocument).setHeader("Documento").setAutoWidth(true);
+        grid.addColumn(c -> c.name).setHeader("Nome").setAutoWidth(true).setFlexGrow(1);
+        grid.addColumn(c -> c.admin ? "Sim" : "Não").setHeader("Admin").setAutoWidth(true);
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
         grid.setHeight("420px");
 
         confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirmBtn.setEnabled(false); // habilita só quando selecionar
         confirmBtn.addClickListener(e -> onConfirm());
+
+        grid.asSingleSelect().addValueChangeListener(e -> {
+            confirmBtn.setEnabled(e.getValue() != null);
+        });
+
         refreshBtn.addClickListener(e -> {
             try { loadData(); } catch (Exception ex) { showError(ex); }
         });
 
         createBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_TERTIARY);
-        createBtn.addClickListener(e -> UI.getCurrent().navigate("companies/new"));
+        createBtn.addClickListener(e -> UI.getCurrent().navigate("company/new"));
 
         HorizontalLayout actions = new HorizontalLayout(confirmBtn, refreshBtn, createBtn);
         actions.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.BASELINE);
 
         content.add(title, new Paragraph("Selecione uma empresa e clique em “Usar esta empresa”."), grid, actions);
+    }
 
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
         try {
-            long uid = currentUserService.requireUserId(); // << substituído aqui
+            if (!currentUserService.isLoggedIn()) {
+                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+                UI.getCurrent().navigate("login");
+                return;
+            }
+
+            long uid = currentUserService.requireUserId();
+
             if (currentCompanyService.ensureAutoSelectionIfSingle(uid)) {
-                Notification.show("Empresa selecionada automaticamente.", 2500, Notification.Position.MIDDLE);
+                Notification.show("Empresa selecionada automaticamente.", 2000, Notification.Position.MIDDLE);
                 UI.getCurrent().navigate("home");
                 return;
             }
@@ -93,27 +111,27 @@ public class CompanySelectView extends VerticalLayout {
 
     private void loadData() throws SQLException {
         grid.setItems(List.of());
-        long uid = currentUserService.requireUserId(); // << substituído aqui
-        List<Company> items = currentCompanyService.listSelectableForUser(uid);
+        long uid = currentUserService.requireUserId();
+        List<CompanyChoice> items = currentCompanyService.listSelectableChoicesForUser(uid);
         grid.setItems(items);
 
         boolean empty = items.isEmpty();
-        confirmBtn.setEnabled(!empty);
+        confirmBtn.setEnabled(!empty && grid.asSingleSelect().getValue() != null);
         if (empty) {
             Notification.show("Você ainda não possui empresas. Crie uma para continuar.", 4000, Notification.Position.BOTTOM_CENTER);
         }
     }
 
     private void onConfirm() {
-        Company selected = grid.asSingleSelect().getValue();
+        CompanyChoice selected = grid.asSingleSelect().getValue();
         if (selected == null) {
             Notification.show("Selecione uma empresa.", 2500, Notification.Position.MIDDLE);
             return;
         }
         try {
-            long uid = currentUserService.requireUserId(); // << substituído aqui
-            currentCompanyService.selectCompanyForUser(uid, selected.getId());
-            Notification.show("Empresa selecionada: " + selected.getName(), 2500, Notification.Position.MIDDLE);
+            long uid = currentUserService.requireUserId();
+            currentCompanyService.selectCompanyForUser(uid, selected.id);
+            Notification.show("Empresa selecionada: " + selected.name, 2500, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("home");
         } catch (Exception ex) {
             showError(ex);

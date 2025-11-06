@@ -80,11 +80,11 @@ public class CurrentCompanyService {
      */
     @Transactional(readOnly = true)
     public boolean ensureAutoSelectionIfSingle(long userId) throws SQLException {
-        if (holder().isSelected()) return true;
+        if (holder().isSelected()) return false;
 
         List<CompanyChoice> choices = userCompanyService.companyChoicesFor(userId);
         if (choices.size() == 1) {
-            long companyId = choices.get(0).id;
+            long companyId = choices.getFirst().id;
             selectCompanyForUser(userId, companyId);
             return true;
         }

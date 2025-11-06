@@ -68,7 +68,7 @@ public class CompanySelectView extends VerticalLayout {
         grid.setHeight("420px");
 
         confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        confirmBtn.setEnabled(false); // habilita só quando selecionar
+        confirmBtn.setEnabled(false);
         confirmBtn.addClickListener(e -> onConfirm());
 
         grid.asSingleSelect().addValueChangeListener(e -> {

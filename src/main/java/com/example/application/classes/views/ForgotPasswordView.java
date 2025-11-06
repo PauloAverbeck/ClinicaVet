@@ -73,7 +73,7 @@ public class ForgotPasswordView extends VerticalLayout {
         enviarBtn.addClickListener(e -> onSubmit());
         enviarBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("login")));
+        voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("home")));
         voltarLoginBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
 

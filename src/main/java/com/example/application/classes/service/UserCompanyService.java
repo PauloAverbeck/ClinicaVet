@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -40,8 +41,8 @@ public class UserCompanyService {
         return userCompanyRepository.findActive(userId, companyId);
     }
 
-    public List<UserCompanyLink> companiesOf(long userId) throws SQLException {
-        return userCompanyRepository.listActiveLinksByUser(userId);
+    public Map<Long, String> companiesByUserIdAggregated() throws SQLException {
+        return userCompanyRepository.companiesByUserIdAggregated();
     }
 
     public List<CompanyChoice> companyChoicesFor(long userId) throws SQLException {

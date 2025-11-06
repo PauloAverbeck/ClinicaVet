@@ -7,9 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Repository
 public class UserCompanyRepository {
@@ -71,6 +69,27 @@ public class UserCompanyRepository {
                 return rs.next();
             }
         }
+    }
+
+    public Map<Long, String> companiesByUserIdAggregated() throws SQLException {
+        final String sql = """
+        SELECT u.id AS user_id,
+               COALESCE(string_agg(DISTINCT c.name, ', ' ORDER BY c.name), '') AS companies
+          FROM app_user u
+          LEFT JOIN user_company uc ON uc.user_id = u.id
+          LEFT JOIN company c       ON c.id = uc.company_id
+         GROUP BY u.id
+        """;
+
+        Map<Long, String> out = new HashMap<>();
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.put(rs.getLong("user_id"), rs.getString("companies"));
+            }
+        }
+        return out;
     }
 
     public List<CompanyChoice> listActiveCompanyChoicesByUser(long userId) throws SQLException {

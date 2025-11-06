@@ -139,7 +139,7 @@ public class CompanySelectView extends VerticalLayout {
             long uid = currentUserService.requireUserId();
             currentCompanyService.selectCompanyForUser(uid, selected.id);
             Notification.show("Empresa selecionada: " + selected.name, 2500, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
+            UI.getCurrent().navigate("users");
         } catch (Exception ex) {
             showError(ex);
         }

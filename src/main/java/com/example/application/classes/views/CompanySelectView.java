@@ -6,6 +6,7 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.service.CompanyChoice;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
+import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -92,10 +93,11 @@ public class CompanySelectView extends VerticalLayout {
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
         try {
-            if (!currentUserService.isLoggedIn()) {
+            //TODO remover quando implementar controle de acesso
+            ViewGuard.requireLogin(currentUserService, () -> {
+                Notification.show("Faça login para continuar.", 2500, Notification.Position.MIDDLE);
                 UI.getCurrent().navigate("home");
-                return;
-            }
+            });
             long uid = currentUserService.requireUserId();
             if (currentCompanyService.ensureAutoSelectionIfSingle(uid)) {
                 Notification.show("Empresa selecionada automaticamente.", 1500, Notification.Position.MIDDLE);

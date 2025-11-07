@@ -6,6 +6,7 @@ import com.example.application.classes.model.AppUser;
 import com.example.application.classes.service.AppUserService;
 import com.example.application.classes.service.CurrentUserService;
 import com.example.application.classes.service.UserCompanyService;
+import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
@@ -106,9 +107,9 @@ public class AppUserView extends Main {
     @Override
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
-        if (!currentUserService.isLoggedIn()) {
+        ViewGuard.requireLogin(currentUserService, () -> {
             Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("home");
-        }
+        });
     }
 }

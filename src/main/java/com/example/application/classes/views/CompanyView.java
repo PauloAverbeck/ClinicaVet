@@ -24,7 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Empresas")
 @Route(value = "company/new", layout = MainLayout.class)
-@Menu(title = "Register Company", icon = "la la-building", order = 6)
+@Menu(title = "Cadastrar Empresa", icon = "la la-building", order = 6)
 @PermitAll
 public class CompanyView extends VerticalLayout {
     private final CompanyService companyService;
@@ -46,7 +46,7 @@ public class CompanyView extends VerticalLayout {
         setPadding(true);
         setSpacing(true);
 
-        var header = new ViewToolbar("Register Company");
+        var header = new ViewToolbar("Cadastrar Empresa");
         add(header);
 
         var body = new CenteredBody();

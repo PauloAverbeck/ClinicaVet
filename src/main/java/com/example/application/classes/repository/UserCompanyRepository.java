@@ -76,11 +76,10 @@ public class UserCompanyRepository {
         SELECT u.id AS user_id,
                COALESCE(string_agg(DISTINCT c.name, ', ' ORDER BY c.name), '') AS companies
           FROM app_user u
-          LEFT JOIN user_company uc ON uc.user_id = u.id
+          LEFT JOIN user_company uc ON uc.user_id = u.id AND uc.deleted_at IS NULL
           LEFT JOIN company c       ON c.id = uc.company_id
          GROUP BY u.id
         """;
-
         Map<Long, String> out = new HashMap<>();
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql);
@@ -101,9 +100,9 @@ public class UserCompanyRepository {
         FROM user_company uc
         JOIN company c ON c.id = uc.company_id
         WHERE uc.user_id = ?
+          AND uc.deleted_at IS NULL
         ORDER BY c.name
         """;
-
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, userId);
@@ -129,7 +128,7 @@ public class UserCompanyRepository {
             COALESCE(uc.admin, FALSE) AS admin
         FROM user_company uc
         WHERE uc.user_id = ?
-          AND (uc.active IS TRUE OR uc.active IS NULL)
+          AND (uc.deleted_at IS NULL)
         ORDER BY uc.company_id
         """;
         try (var con = dataSource.getConnection();
@@ -150,9 +149,17 @@ public class UserCompanyRepository {
     }
 
     public List<UserCompanyLink> listActiveByCompany(long companyId) throws SQLException {
-        final String sql = baseSelect() + " WHERE uc.company_id=? AND uc.deleted_at IS NULL ORDER BY u.name";
+        final String sql = """
+        SELECT uc.id, uc.version, uc.creation_date, uc.update_date,
+               uc.user_id, uc.company_id, uc.created_by_user_id, uc.admin, uc.deleted_at
+          FROM user_company uc
+          JOIN app_user u ON u.id = uc.user_id
+         WHERE uc.company_id = ?
+           AND uc.deleted_at IS NULL
+         ORDER BY u.name
+        """;
         try (Connection con = dataSource.getConnection();
-        PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, companyId);
             try (ResultSet rs = ps.executeQuery()) {
                 List<UserCompanyLink> out = new ArrayList<>();
@@ -173,9 +180,9 @@ public class UserCompanyRepository {
                 """;
         try (Connection con = dataSource.getConnection();
         PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, userId);
-            ps.setLong(2, companyId);
-            ps.setBoolean(3, admin);
+            ps.setBoolean(1, admin);
+            ps.setLong(2, userId);
+            ps.setLong(3, companyId);
             ps.executeUpdate();
         }
     }

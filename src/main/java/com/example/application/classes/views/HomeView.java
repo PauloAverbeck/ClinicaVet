@@ -3,7 +3,10 @@ package com.example.application.classes.views;
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
-import com.example.application.classes.service.*;
+import com.example.application.classes.service.AppUserService;
+import com.example.application.classes.service.CurrentCompanyService;
+import com.example.application.classes.service.CurrentUserService;
+import com.example.application.classes.service.UserCompanyService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -21,8 +24,6 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-
-import java.util.List;
 
 @PageTitle("Início")
 @Route(value = "", layout = MainLayout.class)
@@ -135,11 +136,6 @@ public class HomeView extends VerticalLayout {
                     // Seleção de empresa
                     if (currentCompanyService.ensureAutoSelectionIfSingle(user.getId())) {
                         UI.getCurrent().navigate("users");
-                        return;
-                    }
-                    List<CompanyChoice> choices = userCompanyService.companyChoicesFor(user.getId());
-                    if (choices.isEmpty()) {
-                        UI.getCurrent().navigate("company/select");
                     } else {
                         UI.getCurrent().navigate("company/select");
                     }

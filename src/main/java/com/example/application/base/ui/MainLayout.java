@@ -18,7 +18,7 @@ import static com.vaadin.flow.theme.lumo.LumoUtility.*;
 
 @Layout
 public final class MainLayout extends AppLayout {
-    MainLayout() {
+    public MainLayout() {
         setPrimarySection(Section.DRAWER);
         addToDrawer(createHeader(), new Scroller(createSideNav()));
         UI.getCurrent().getElement().getThemeList().add(Lumo.DARK);

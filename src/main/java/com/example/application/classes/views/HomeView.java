@@ -52,6 +52,10 @@ public class HomeView extends VerticalLayout {
         this.userCompanyService = userCompanyService;
 
         setSizeFull();
+        setAlignItems(Alignment.CENTER);
+        setJustifyContentMode(JustifyContentMode.CENTER);
+        setSpacing(true);
+
         var header = new ViewToolbar("Início");
         add(header);
 
@@ -60,10 +64,6 @@ public class HomeView extends VerticalLayout {
         setFlexGrow(1, body);
 
         var content = body.wrapper();
-        content.setWidth("420px");
-        content.getStyle().set("display", "flex");
-        content.getStyle().set("flexDirection", "column");
-        content.getStyle().set("gap", "var(--lumo-space-m)");
 
         H1 title = new H1("Bem-vindo ao Clínica Vet");
 

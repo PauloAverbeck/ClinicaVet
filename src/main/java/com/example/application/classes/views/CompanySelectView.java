@@ -44,6 +44,8 @@ public class CompanySelectView extends VerticalLayout {
         this.currentCompanyService = currentCompanyService;
 
         setSizeFull();
+        setAlignItems(Alignment.CENTER);
+        setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
 
         var header = new ViewToolbar("Selecionar Empresa");
@@ -54,10 +56,6 @@ public class CompanySelectView extends VerticalLayout {
         setFlexGrow(1, body);
 
         var content = body.wrapper();
-        content.setWidthFull();
-        content.getStyle().set("display", "flex");
-        content.getStyle().set("flex-direction", "column");
-        content.getStyle().set("gap", "var(--lumo-space-m)");
 
         H1 title = new H1("Escolha com qual empresa você deseja trabalhar");
 

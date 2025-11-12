@@ -22,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Esqueci minha senha")
 @Route(value = "forgot", layout = MainLayout.class)
-@Menu(title = "Forgot Password", icon = "la la-key", order = 3)
+@Menu(title = "Esqueci Minha Senha", icon = "la la-key", order = 3)
 @AnonymousAllowed
 public class ForgotPasswordView extends VerticalLayout {
 
@@ -41,7 +41,7 @@ public class ForgotPasswordView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Forgot Password");
+        var header = new ViewToolbar("Esqueci Minha Senha");
         add(header);
 
         var body = new CenteredBody();

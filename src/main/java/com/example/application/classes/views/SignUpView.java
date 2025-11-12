@@ -19,7 +19,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @PageTitle("Criar conta")
 @Route(value = "signup", layout = MainLayout.class)
-@Menu(title = "Sign Up", icon = "la la-user-plus", order = 2)
+@Menu(title = "Criar Conta", icon = "la la-user-plus", order = 2)
 @AnonymousAllowed
 public class SignUpView extends VerticalLayout {
 
@@ -37,7 +37,7 @@ public class SignUpView extends VerticalLayout {
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Sign Up");
+        var header = new ViewToolbar("Criar Conta");
         add(header);
 
         var body = new CenteredBody();

@@ -6,7 +6,10 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.DocumentType;
 import com.example.application.classes.service.CompanyService;
 import com.example.application.classes.service.CurrentUserService;
+import com.example.application.config.ViewGuard;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -19,13 +22,11 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Empresas")
 @Route(value = "company/new", layout = MainLayout.class)
 @Menu(title = "Cadastrar Empresa", icon = "la la-building", order = 6)
-@PermitAll
 public class CompanyView extends VerticalLayout {
     private final CompanyService companyService;
     private final CurrentUserService currentUserService;
@@ -90,5 +91,15 @@ public class CompanyView extends VerticalLayout {
             Notification.show("Erro ao criar empresa: " + ex.getMessage(), 7000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
         }
+    }
+
+    //TODO Remover quando implementar controle de acesso
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        ViewGuard.requireLogin(currentUserService, () -> {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("home");
+        });
     }
 }

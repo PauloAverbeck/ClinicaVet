@@ -20,20 +20,42 @@ public class UserCompanyRepository {
 
     /* CREATE */
 
-    public long insert (long createdByUserId, long userId, long companyId, boolean admin) throws SQLException {
-        final String sql = """
-                INSERT INTO user_company (created_by_user_id, user_id, company_id, admin)
-                VALUES (?, ?, ?, ?)
-                RETURNING id, creation_date, update_date, version
-                """;
-        try (Connection con = dataSource.getConnection();
-        PreparedStatement ps = con.prepareStatement(sql)) {
+    public long insertOrRestore(long createdByUserId, long userId, long companyId, boolean admin) throws SQLException {
+        // 1) se já existe ativo, não faz nada (idempotente)
+        var existing = findActive(userId, companyId);
+        if (existing.isPresent()) return existing.get().getId();
+
+        // 2) tenta restaurar se estava soft-deleted
+        final String restoreSql = """
+        UPDATE user_company
+           SET deleted_at = NULL,
+               admin = COALESCE(admin, ?)
+         WHERE user_id = ? AND company_id = ? AND deleted_at IS NOT NULL
+        RETURNING id
+        """;
+        try (var con = dataSource.getConnection();
+             var ps = con.prepareStatement(restoreSql)) {
+            ps.setBoolean(1, admin);
+            ps.setLong(2, userId);
+            ps.setLong(3, companyId);
+            try (var rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong("id");
+            }
+        }
+
+        // 3) senão, insere
+        final String insertSql = """
+        INSERT INTO user_company (created_by_user_id, user_id, company_id, admin)
+        VALUES (?, ?, ?, ?)
+        RETURNING id
+        """;
+        try (var con = dataSource.getConnection();
+             var ps = con.prepareStatement(insertSql)) {
             ps.setLong(1, createdByUserId);
             ps.setLong(2, userId);
             ps.setLong(3, companyId);
             ps.setBoolean(4, admin);
-
-            try (ResultSet rs = ps.executeQuery()) {
+            try (var rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getLong("id");
             }

@@ -21,7 +21,6 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.List;
 @PageTitle("Selecionar Empresa")
 @Route(value = "company/select", layout = MainLayout.class)
 @Menu(title = "Selecionar Empresa", icon = "la la-building", order = 2)
-@PermitAll
 public class CompanySelectView extends VerticalLayout {
 
     private final CurrentUserService currentUserService;

@@ -20,12 +20,12 @@ public class UserCompanyService {
 
     @Transactional
     public long linkAsAdmin(long createdByUserId, long userId, long companyId) throws SQLException {
-        return userCompanyRepository.insert(createdByUserId, userId, companyId, true);
+        return userCompanyRepository.insertOrRestore(createdByUserId, userId, companyId, true);
     }
 
     @Transactional
     public long linkMember(long createdByUserId, long userId, long companyId) throws SQLException {
-        return userCompanyRepository.insert(createdByUserId, userId, companyId, false);
+        return userCompanyRepository.insertOrRestore(createdByUserId, userId, companyId, false);
     }
 
     @Transactional

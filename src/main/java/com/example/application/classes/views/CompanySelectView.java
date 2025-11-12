@@ -26,9 +26,9 @@ import jakarta.annotation.security.PermitAll;
 import java.sql.SQLException;
 import java.util.List;
 
-@PageTitle("Selecionar empresa")
+@PageTitle("Selecionar Empresa")
 @Route(value = "company/select", layout = MainLayout.class)
-@Menu(title = "Selecionar empresa", icon = "la la-building", order = 2)
+@Menu(title = "Selecionar Empresa", icon = "la la-building", order = 2)
 @PermitAll
 public class CompanySelectView extends VerticalLayout {
 
@@ -36,7 +36,7 @@ public class CompanySelectView extends VerticalLayout {
     private final CurrentCompanyService currentCompanyService;
 
     private final Grid<CompanyChoice> grid = new Grid<>(CompanyChoice.class, false);
-    private final Button confirmBtn = new Button("Usar esta empresa");
+    private final Button confirmBtn = new Button("Usar empresa");
     private final Button refreshBtn = new Button("Atualizar lista");
     private final Button createBtn  = new Button("Criar empresa");
 
@@ -48,7 +48,7 @@ public class CompanySelectView extends VerticalLayout {
         setSizeFull();
         setSpacing(true);
 
-        var header = new ViewToolbar("Selecionar empresa");
+        var header = new ViewToolbar("Selecionar Empresa");
         add(header);
 
         var body = new CenteredBody();

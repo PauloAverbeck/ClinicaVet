@@ -13,7 +13,7 @@
 - [ ] Telas: CompanyForm/List, UserCompanyView;
 - [x] Ao criar empresa, vincular quem criou como admin;
 - [x] Listagem de vínculos, criar/remover (soft-delete), checagem de permissões (is_admin);
-- [ ] Guard no app para exigir vínculo ativo antes de acessar módulos da empresa.
+- [x] Guard no app para exigir vínculo ativo antes de acessar módulos da empresa.
 #
 - **Semana 3 - Pessoas e Animais**
 - [ ] V2: tabelas person e animal;

@@ -208,32 +208,14 @@ public class AppUserView extends Main {
                         .map(Company::getId)
                         .collect(Collectors.toSet());
 
-                var existingChoices = userCompanyService.companyChoicesFor(selected.getId());
-                var oldCompanyIds = existingChoices.stream()
-                        .map(c -> c.id)
-                        .collect(Collectors.toSet());
-
-                var toAdd = newCompanyIds.stream()
-                        .filter(id -> !oldCompanyIds.contains(id))
-                        .toList();
-
-                var toRemove = oldCompanyIds.stream()
-                        .filter(id -> !newCompanyIds.contains(id))
-                        .toList();
-
                 long actingUserId;
                 try {
                     actingUserId = currentUserService.requireUserId();
-                } catch (Exception e2) {
+                } catch (Exception ex) {
                     actingUserId = selected.getId();
                 }
 
-                for (Long cid : toAdd) {
-                    userCompanyService.linkMember(actingUserId, selected.getId(), cid);
-                }
-                for (Long cid : toRemove) {
-                    userCompanyService.unlink(selected.getId(), cid);
-                }
+                userCompanyService.replaceCompaniesForUser(actingUserId, selected.getId(), newCompanyIds);
 
                 Notification.show("Usuário atualizado com sucesso.",
                                 3000, Notification.Position.MIDDLE)

@@ -6,9 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class UserCompanyService {
@@ -49,8 +48,36 @@ public class UserCompanyService {
         return userCompanyRepository.listActiveCompanyChoicesByUser(userId);
     }
 
-
     public List<UserCompanyLink> membersOf(long companyId) throws SQLException {
         return userCompanyRepository.listActiveByCompany(companyId);
+    }
+
+    public List<UserCompanyLink> linksOfUser(long userId) throws SQLException {
+        return userCompanyRepository.listActiveLinksByUser(userId);
+    }
+
+    @Transactional
+    public void replaceCompaniesForUser(long actingUserId, long userId, Set<Long> newCompanyIds) throws SQLException {
+        List<UserCompanyLink> existingLinks = userCompanyRepository.listActiveLinksByUser(userId);
+
+        Set<Long> oldIds = existingLinks.stream()
+                .map(UserCompanyLink::getCompanyId)
+                .collect(Collectors.toSet());
+
+        Set<Long> toAdd = new HashSet<>(newCompanyIds);
+        toAdd.removeAll(oldIds);
+
+        Set<Long> toDelete = new HashSet<>(oldIds);
+        toDelete.removeAll(newCompanyIds);
+
+        // 1) Delete first
+        for (Long cid : toDelete) {
+            userCompanyRepository.softDelete(userId, cid);
+        }
+
+        // 2) Add / Restore
+        for (Long cid : toAdd) {
+            userCompanyRepository.insertOrRestore(actingUserId, userId, cid, false);
+        }
     }
 }

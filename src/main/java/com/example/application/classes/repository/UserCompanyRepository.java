@@ -29,33 +29,43 @@ public class UserCompanyRepository {
         final String restoreSql = """
         UPDATE user_company
            SET deleted_at = NULL,
-               admin = COALESCE(admin, ?)
-         WHERE user_id = ? AND company_id = ? AND deleted_at IS NOT NULL
+               admin = ?,
+               update_date = CURRENT_TIMESTAMP,
+               version = version + 1
+         WHERE user_id = ?
+           AND company_id = ?
         RETURNING id
         """;
-        try (var con = dataSource.getConnection();
-             var ps = con.prepareStatement(restoreSql)) {
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(restoreSql)) {
             ps.setBoolean(1, admin);
             ps.setLong(2, userId);
             ps.setLong(3, companyId);
-            try (var rs = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getLong("id");
             }
         }
 
         // 3) senão, insere
         final String insertSql = """
-        INSERT INTO user_company (created_by_user_id, user_id, company_id, admin)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO user_company (created_by_user_id, user_id, company_id, admin, deleted_at)
+        VALUES (?, ?, ?, ?, NULL)
+        ON CONFLICT (user_id, company_id)
+        DO UPDATE SET
+            deleted_at      = NULL,
+            admin           = EXCLUDED.admin,
+            update_date     = now(),
+            version         = user_company.version + 1,
+            created_by_user_id = COALESCE(user_company.created_by_user_id, EXCLUDED.created_by_user_id)
         RETURNING id
         """;
-        try (var con = dataSource.getConnection();
-             var ps = con.prepareStatement(insertSql)) {
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(insertSql)) {
             ps.setLong(1, createdByUserId);
             ps.setLong(2, userId);
             ps.setLong(3, companyId);
             ps.setBoolean(4, admin);
-            try (var rs = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getLong("id");
             }

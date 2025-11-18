@@ -56,7 +56,7 @@ public class CompanyRepository {
     }
 
     public Optional<Company> findById(long id) throws SQLException {
-        final String sql = baseSelect() + " WHERE id = ?";
+        final String sql = baseSelect() + " WHERE id = ? AND deleted_at IS NULL";
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, id);
@@ -68,7 +68,7 @@ public class CompanyRepository {
     }
 
     public Optional<Company> findByDocument(DocumentType type, String document) throws SQLException {
-        final String sql = baseSelect() + " WHERE document_type = ? AND document = ?";
+        final String sql = baseSelect() + " WHERE document_type = ? AND document = ? AND deleted_at IS NULL";
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, type != null ? type.name() : null);
@@ -81,7 +81,12 @@ public class CompanyRepository {
     }
 
     public boolean existsByDocument(DocumentType type, String document) throws SQLException {
-        final String sql = "SELECT 1 FROM company WHERE document_type = ? AND document = ? LIMIT 1";
+        final String sql = """
+                SELECT 1
+                 FROM company
+                 WHERE document_type = ? AND document = ? AND deleted_at IS NULL
+                 LIMIT 1
+                """;
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, type != null ? type.name() : null);
@@ -93,7 +98,7 @@ public class CompanyRepository {
     }
 
     public List<Company> listAll() throws SQLException {
-        final String sql = baseSelect() + " ORDER BY name";
+        final String sql = baseSelect() + " WHERE deleted_at IS NULL ORDER BY name";
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
             ResultSet rs = ps.executeQuery()) {
@@ -105,11 +110,11 @@ public class CompanyRepository {
     }
 
     public List<Company> searchByName(String name, int limit) throws SQLException {
-        final String sql = baseSelect() + " WHERE LOWER(name) LIKE LOWER(?) ORDER BY name LIMIT ?";
+        final String sql = baseSelect() + " WHERE deleted_at IS NULL AND LOWER(name) LIKE LOWER(?) ORDER BY name LIMIT ?";
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, "%" + (name == null ? "" : name.trim()) + "%");
-            ps.setInt(2, Math.max(1, limit));
+            ps.setString(1, "%" + name + "%");
+            ps.setInt(2, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 List<Company> list = new ArrayList<>();
                 while (rs.next()) list.add(map(rs));
@@ -153,12 +158,18 @@ public class CompanyRepository {
     }
 
     public void deleteById(long id) throws SQLException {
-        final String sql = "DELETE FROM company WHERE id = ?";
+        final String sql = """
+                UPDATE company
+                     SET deleted_at = CURRENT_TIMESTAMP,
+                         update_date = CURRENT_TIMESTAMP,
+                         version = version + 1
+                 WHERE id = ? AND deleted_at IS NULL
+                """;
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, id);
             int rows = ps.executeUpdate();
-            if (rows == 0) throw new SQLException("Nenhuma empresa removida. ID=" + id);
+            if (rows == 0) throw new SQLException("Nenhuma empresa ativa encontrada para remover. ID=" + id);
         }
     }
 
@@ -166,7 +177,7 @@ public class CompanyRepository {
 
     private static String baseSelect() {
         return """
-               SELECT id, version, creation_date, update_date, name, document_type, document
+               SELECT id, version, creation_date, update_date, name, document_type, document, deleted_at
                FROM company
                """;
     }

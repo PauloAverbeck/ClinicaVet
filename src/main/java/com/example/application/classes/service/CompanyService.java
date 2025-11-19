@@ -40,10 +40,23 @@ public class CompanyService {
     }
 
     @Transactional
-    public long createForUser(long createdByUserId, String name, DocumentType documentType, String document) throws SQLException {
-        long companyId = create(name, documentType, document);
-        userCompanyService.linkAsAdmin(createdByUserId, createdByUserId, companyId);
-        return companyId;
+    public long createForUser(long userId, String name, DocumentType type, String document) throws SQLException {
+        Company company = new Company();
+        company.setName(name);
+        company.setDocumentType(type);
+        company.setDocument(document);
+
+        long id = companyRepository.insert(company);
+
+        boolean isFirstCompany = userCompanyService.linksOfUser(userId).isEmpty();
+
+        if (isFirstCompany) {
+            userCompanyService.linkAsAdmin(userId, userId, id);
+        } else {
+            userCompanyService.linkMember(userId, userId, id);
+        }
+
+        return id;
     }
 
     /* READ */

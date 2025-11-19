@@ -108,8 +108,12 @@ public class UserCompanyRepository {
         SELECT u.id AS user_id,
                COALESCE(string_agg(DISTINCT c.name, ', ' ORDER BY c.name), '') AS companies
           FROM app_user u
-          LEFT JOIN user_company uc ON uc.user_id = u.id AND uc.deleted_at IS NULL
-          LEFT JOIN company c       ON c.id = uc.company_id
+          LEFT JOIN user_company uc
+            ON uc.user_id = u.id
+            AND uc.deleted_at IS NULL
+          LEFT JOIN company c
+            ON c.id = uc.company_id
+            AND c.deleted_at IS NULL
          GROUP BY u.id
         """;
         Map<Long, String> out = new HashMap<>();
@@ -133,6 +137,7 @@ public class UserCompanyRepository {
         JOIN company c ON c.id = uc.company_id
         WHERE uc.user_id = ?
           AND uc.deleted_at IS NULL
+          AND c.deleted_at IS NULL
         ORDER BY c.name
         """;
         try (Connection con = dataSource.getConnection();

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -68,10 +67,10 @@ public class CurrentCompanyService {
         }
         UserCompanyLink link = linkOpt.get();
 
-        Company c = companyRepository.findById(companyId)
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalStateException("Empresa não encontrada: id=" + companyId));
 
-        holder().set(c.getId(), c.getName(), link.isAdmin());
+        holder().set(company.getId(), company.getName(), link.isAdmin());
     }
 
     /**
@@ -93,17 +92,7 @@ public class CurrentCompanyService {
 
     /**
      * Lista as empresas para as quais o usuário possui vínculo ativo.
-     * (Usa o CompanyRepository existente.)
      */
-    @Transactional(readOnly = true)
-    public List<Company> listSelectableForUser(long userId) throws SQLException {
-        List<CompanyChoice> choices = userCompanyService.companyChoicesFor(userId);
-        List<Company> result = new ArrayList<>(choices.size());
-        for (CompanyChoice choice : choices) {
-            companyRepository.findById(choice.id).ifPresent(result::add);
-        }
-        return result;
-    }
 
     @Transactional(readOnly = true)
     public List<CompanyChoice> listSelectableChoicesForUser(long userId) throws SQLException {

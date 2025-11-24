@@ -106,6 +106,7 @@ public class AppUserRepository {
               FROM user_company uc
               JOIN app_user au ON uc.user_id = au.id
              WHERE uc.company_id = ?
+                AND uc.deleted_at IS NULL
              ORDER BY au.name
             """;
         try (Connection con = dataSource.getConnection();

@@ -9,10 +9,14 @@ import com.example.application.classes.service.UserCompanyService;
 import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -71,6 +75,43 @@ public class CompanyUsersView extends Main  {
                 .setHeader("Admin")
                 .setAutoWidth(true)
                 .setSortable(true);
+
+        grid.addColumn(new ComponentRenderer<>( row -> {
+            HorizontalLayout actions = new HorizontalLayout();
+
+            Button adminBtn = new Button(row.isAdmin() ? "Remover Admin" : "Tornar Admin");
+            adminBtn.addClickListener(event -> {
+                try {
+                    userCompanyService.setAdmin(row.getUserId(), currentCompanyService.activeCompanyIdOrThrow(), !row.isAdmin());
+                    Notification.show("Permissão de admin atualizada com sucesso.", 3000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    reloadGrid();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    Notification.show("Erro ao atualizar permissão de admin: " + ex.getMessage(),
+                                    6000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            });
+
+            Button removeBtn = new Button("Remover");
+            removeBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+            removeBtn.addClickListener(event -> {
+                try {
+                    userCompanyService.unlink(row.getUserId(), currentCompanyService.activeCompanyIdOrThrow());
+                    Notification.show("Usuário removido com sucesso.", 3000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    reloadGrid();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    Notification.show("Erro ao remover usuário: " + ex.getMessage(),
+                                    6000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            });
+            actions.add(adminBtn, removeBtn);
+            return actions;
+        })).setHeader("Ações").setAutoWidth(true);
 
         return grid;
     }

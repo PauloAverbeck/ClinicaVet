@@ -39,6 +39,10 @@ public class UserCompanyService {
         return userCompanyRepository.isUserAdmin(userId, companyId);
     }
 
+    public void setAdmin(long userId, long companyId, boolean isAdmin) throws SQLException {
+        userCompanyRepository.setAdmin(userId, companyId, isAdmin);
+    }
+
     public Optional<UserCompanyLink> findActiveLink(long userId, long companyId) throws SQLException {
         return userCompanyRepository.findActive(userId, companyId);
     }

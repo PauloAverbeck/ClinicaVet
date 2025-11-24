@@ -1,6 +1,7 @@
 package com.example.application.classes.service;
 
 import com.example.application.classes.model.UserCompanyLink;
+import com.example.application.classes.repository.AppUserRepository;
 import com.example.application.classes.repository.UserCompanyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,9 +13,11 @@ import java.util.stream.Collectors;
 @Service
 public class UserCompanyService {
     private final UserCompanyRepository userCompanyRepository;
+    private final AppUserRepository appUserRepository;
 
-    public UserCompanyService(UserCompanyRepository userCompanyRepository) {
+    public UserCompanyService(UserCompanyRepository userCompanyRepository, AppUserRepository appUserRepository) {
         this.userCompanyRepository = userCompanyRepository;
+        this.appUserRepository = appUserRepository;
     }
 
     @Transactional
@@ -79,5 +82,10 @@ public class UserCompanyService {
         for (Long cid : toAdd) {
             userCompanyRepository.insertOrRestore(actingUserId, userId, cid, false);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<CompanyUserRow> listCompanyUsers(long companyId) throws SQLException {
+        return appUserRepository.listCompanyUsers(companyId);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.application.classes.repository;
 
 import com.example.application.classes.model.AppUser;
+import com.example.application.classes.service.CompanyUserRow;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -92,6 +93,36 @@ public class AppUserRepository {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
+            }
+        }
+    }
+
+    public List<CompanyUserRow> listCompanyUsers(long companyId) throws SQLException {
+        final String sql = """
+            SELECT au.id AS user_id,
+                   au.name AS name,
+                   au.email AS email,
+                   uc.admin AS admin
+              FROM user_company uc
+              JOIN app_user au ON uc.user_id = au.id
+             WHERE uc.company_id = ?
+             ORDER BY au.name
+            """;
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, companyId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<CompanyUserRow> users = new ArrayList<>();
+                while (rs.next()) {
+                    CompanyUserRow row = new CompanyUserRow(
+                        rs.getLong("user_id"),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        rs.getBoolean("admin")
+                    );
+                    users.add(row);
+                }
+                return users;
             }
         }
     }

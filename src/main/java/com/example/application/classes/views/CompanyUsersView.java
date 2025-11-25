@@ -47,8 +47,12 @@ public class CompanyUsersView extends Main  {
         this.currentCompanyService = currentCompanyService;
         this.userCompanyService = userCompanyService;
 
-        var header = new ViewToolbar("Usuários da Empresa");
+        String companyName = currentCompanyService.activeCompanyNameOrNull();
+        var header = new ViewToolbar("Usuários da Empresa: " + companyName);
         add(header);
+
+        this.grid = buildGrid();
+        add(this.grid);
 
         addUserBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addUserBtn.addClickListener(e -> openAddUserDialog());
@@ -56,9 +60,6 @@ public class CompanyUsersView extends Main  {
         HorizontalLayout actionsBar = new HorizontalLayout(addUserBtn);
         actionsBar.setPadding(true);
         add(actionsBar);
-
-        this.grid = buildGrid();
-        add(this.grid);
     }
 
     private Grid<CompanyUserRow> buildGrid() {

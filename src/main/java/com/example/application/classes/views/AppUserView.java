@@ -67,6 +67,7 @@ public class AppUserView extends Main {
 
         configureActionsBar();
         var actionsLayout = new HorizontalLayout(editBtn, deleteBtn);
+        actionsLayout.setPadding(true);
         add(actionsLayout);
 
         reloadGrid();

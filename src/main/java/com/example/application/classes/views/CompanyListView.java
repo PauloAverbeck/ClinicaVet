@@ -55,6 +55,7 @@ public class CompanyListView extends Main {
 
         configureActionsBar();
         var actionsLayout = new HorizontalLayout(newBtn, editBtn, deleteBtn);
+        actionsLayout.setPadding(true);
         add(actionsLayout);
 
         reloadGrid();

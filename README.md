@@ -10,7 +10,7 @@
 - [x] Serviço de validação de documento (CPF/CNPJ/PASSAPORTE) básico.
 #
 - **Semana 2 - Empresa e vínculo**
-- [ ] Telas: CompanyForm/List, UserCompanyView;
+- [x] Telas: CompanyForm/List, UserCompanyView;
 - [x] Ao criar empresa, vincular quem criou como admin;
 - [x] Listagem de vínculos, criar/remover (soft-delete), checagem de permissões (is_admin);
 - [x] Guard no app para exigir vínculo ativo antes de acessar módulos da empresa.

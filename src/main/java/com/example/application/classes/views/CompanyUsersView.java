@@ -11,11 +11,13 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
@@ -33,6 +35,7 @@ public class CompanyUsersView extends Main  {
     private UserCompanyService userCompanyService;
 
     private final Grid<CompanyUserRow> grid;
+    private final Button addUserBtn = new Button("Adicionar Usuário");
 
     public CompanyUsersView(
             CurrentUserService currentUserService,
@@ -46,6 +49,13 @@ public class CompanyUsersView extends Main  {
 
         var header = new ViewToolbar("Usuários da Empresa");
         add(header);
+
+        addUserBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addUserBtn.addClickListener(e -> openAddUserDialog());
+
+        HorizontalLayout actionsBar = new HorizontalLayout(addUserBtn);
+        actionsBar.setPadding(true);
+        add(actionsBar);
 
         this.grid = buildGrid();
         add(this.grid);
@@ -149,5 +159,54 @@ public class CompanyUsersView extends Main  {
                     .addThemeVariants(NotificationVariant.LUMO_ERROR);
             UI.getCurrent().navigate("company/select");
         }
+    }
+
+    private void openAddUserDialog() {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Adicionar Usuário à Empresa");
+
+        TextField emailField = new TextField("E-mail do Usuário");
+        emailField.setWidthFull();
+        emailField.setPlaceholder("exemplo@empresa.com");
+
+        Button addBtn = new Button("Adicionar");
+        addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelBtn = new Button("Cancelar", e -> dialog.close());
+
+        addBtn.addClickListener(e -> {
+            try {
+                String email = emailField.getValue().trim();
+                if (email.isEmpty()) {
+                    Notification.show("O e-mail não pode estar vazio.", 3000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return;
+                }
+
+                long companyId = currentCompanyService.activeCompanyIdOrThrow();
+                long addedUserId = userCompanyService.addUserByEmailToCompany(email, companyId);
+
+                Notification.show("Usuário vinculado com sucesso!", 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+                dialog.close();
+                reloadGrid();
+
+            } catch (IllegalStateException ex) {
+                Notification.show(ex.getMessage(), 6000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Notification.show("Erro ao adicionar usuário: " + ex.getMessage(),
+                                6000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        dialog.getFooter().add(cancelBtn, addBtn);
+
+        dialog.add(emailField);
+        dialog.open();
     }
 }

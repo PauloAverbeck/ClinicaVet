@@ -14,10 +14,12 @@ import java.util.stream.Collectors;
 public class UserCompanyService {
     private final UserCompanyRepository userCompanyRepository;
     private final AppUserRepository appUserRepository;
+    private final CurrentUserService currentUserService;
 
-    public UserCompanyService(UserCompanyRepository userCompanyRepository, AppUserRepository appUserRepository) {
+    public UserCompanyService(UserCompanyRepository userCompanyRepository, AppUserRepository appUserRepository, CurrentUserService currentUserService) {
         this.userCompanyRepository = userCompanyRepository;
         this.appUserRepository = appUserRepository;
+        this.currentUserService = currentUserService;
     }
 
     @Transactional
@@ -91,5 +93,16 @@ public class UserCompanyService {
     @Transactional(readOnly = true)
     public List<CompanyUserRow> listCompanyUsers(long companyId) throws SQLException {
         return appUserRepository.listCompanyUsers(companyId);
+    }
+
+    public long addUserByEmailToCompany(String email, long companyId) throws SQLException {
+        var userOpt = appUserRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new IllegalStateException("Usuário com e-mail " + email + " não encontrado.");
+        }
+        long userId = userOpt.get().getId();
+        long currentUserId = currentUserService.requireUserId();
+
+        return userCompanyRepository.insertOrRestore(currentUserId, userId, companyId, false);
     }
 }

@@ -192,6 +192,7 @@ public class PetRepository {
     }
 
     /* HELPERS */
+
     private static String baseSelect() {
         return """
                 SELECT  id,

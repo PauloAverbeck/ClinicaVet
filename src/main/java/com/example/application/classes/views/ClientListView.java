@@ -99,7 +99,7 @@ public class ClientListView extends Main  {
         });
 
         newBtn.addClickListener(e ->
-                Notification.show("TODO: implementar cadastro de cliente.", 3000, Notification.Position.MIDDLE));
+                UI.getCurrent().navigate("clients/new"));
 
         editBtn.addClickListener(e ->
                 Notification.show("TODO: implementar edição de cliente.", 3000, Notification.Position.MIDDLE));

@@ -97,13 +97,13 @@ public class ClientListView extends Main  {
         });
 
         newBtn.addClickListener(e ->
-                UI.getCurrent().navigate("clients/new"));
+                onNew());
 
         editBtn.addClickListener(e ->
-                Notification.show("TODO: implementar edição de cliente.", 3000, Notification.Position.MIDDLE));
+                onEditSelected());
 
         deleteBtn.addClickListener(e ->
-                Notification.show("TODO: implementar remoção de cliente.", 3000, Notification.Position.MIDDLE));
+                onDeleteSelected());
     }
 
     private void reloadGrid() {
@@ -127,7 +127,7 @@ public class ClientListView extends Main  {
                 UI.getCurrent().navigate("home");
             });
 
-            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+            currentCompanyService.activeCompanyIdOrThrow();
 
             reloadGrid();
         } catch (IllegalStateException ex) {
@@ -141,5 +141,43 @@ public class ClientListView extends Main  {
                     .addThemeNames("error");
             UI.getCurrent().navigate("home");
         }
+    }
+
+    private void onNew() {
+        UI.getCurrent().navigate("clients/new");
+    }
+
+    private void onEditSelected() {
+        Client selected = grid.asSingleSelect().getValue();
+        if (selected == null || selected.getId() == 0) {
+            Notification.show("Selecione um cliente para editar.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("warning");
+            return;
+        }
+        UI.getCurrent().navigate("clients/" + selected.getId() + "/edit");
+    }
+
+    private void onDeleteSelected() {
+        Client selected = grid.asSingleSelect().getValue();
+        if (selected == null || selected.getId() == 0) {
+            Notification.show("Selecione um cliente para remover.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("warning");
+            return;
+        }
+
+        try {
+            clientService.softDelete(selected.getId());
+            Notification.show("Cliente removido com sucesso.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("success");
+            reloadGrid();
+            grid.asSingleSelect().clear();
+            deleteBtn.setEnabled(false);
+            editBtn.setEnabled(false);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao remover cliente: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+        }
+
     }
 }

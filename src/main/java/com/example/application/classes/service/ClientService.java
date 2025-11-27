@@ -36,7 +36,7 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public Optional<Client> findById(long id) throws SQLException {
-        return clientRepository.findById(id, companyId());
+        return clientRepository.findById(companyId(), id);
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +61,7 @@ public class ClientService {
 
     @Transactional
     public void softDelete(long id) throws SQLException {
+        long companyId = companyId();
         clientRepository.softDelete(id, companyId());
     }
 }

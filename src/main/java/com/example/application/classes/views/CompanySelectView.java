@@ -10,7 +10,6 @@ import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
@@ -64,7 +63,7 @@ public class CompanySelectView extends VerticalLayout {
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
         grid.setHeight("420px");
 
-        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        confirmBtn.addThemeNames("primary");
         confirmBtn.setEnabled(false);
         confirmBtn.addClickListener(e -> onConfirm());
 
@@ -76,7 +75,7 @@ public class CompanySelectView extends VerticalLayout {
             try { loadData(); } catch (Exception ex) { showError(ex); }
         });
 
-        createBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_TERTIARY);
+        createBtn.addThemeNames("success", "tertiary");
         createBtn.addClickListener(e -> UI.getCurrent().navigate("company/new"));
 
         HorizontalLayout actions = new HorizontalLayout(confirmBtn, refreshBtn, createBtn);

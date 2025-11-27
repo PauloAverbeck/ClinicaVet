@@ -6,11 +6,9 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.service.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.router.Menu;
@@ -71,10 +69,10 @@ public class ForgotPasswordView extends VerticalLayout {
 
         enviarBtn.addClickShortcut(Key.ENTER);
         enviarBtn.addClickListener(e -> onSubmit());
-        enviarBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        enviarBtn.addThemeNames("primary");
 
         voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("home")));
-        voltarLoginBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        voltarLoginBtn.addThemeNames("tertiary");
 
 
         content.add(title, subtitle, email, enviarBtn, voltarLoginBtn);
@@ -95,12 +93,12 @@ public class ForgotPasswordView extends VerticalLayout {
             appUserService.forgotPassword(value);
 
             var ok = Notification.show("Se o e-mail estiver cadastrado, você receberá uma senha provisória em instantes.", 5000, Notification.Position.BOTTOM_CENTER);
-            ok.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            ok.addThemeNames("success");
 
             email.clear();
         } catch (Exception ex) {
             var n = Notification.show("Erro ao processar solicitação: " + ex.getMessage(), 6000, Notification.Position.MIDDLE);
-            n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            n.addThemeNames("error");
         } finally {
             setLoading(false);
         }

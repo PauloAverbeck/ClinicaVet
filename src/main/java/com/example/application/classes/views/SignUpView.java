@@ -6,7 +6,6 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.service.AppUserService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -60,7 +59,7 @@ public class SignUpView extends VerticalLayout {
         createBtn.addClickListener(e -> onCreate());
         createBtn.addClickShortcut(Key.ENTER);
         createBtn.setDisableOnClick(true);
-        createBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        createBtn.addThemeNames("primary");
 
         content.add(title, nameField, emailField, createBtn);
     }

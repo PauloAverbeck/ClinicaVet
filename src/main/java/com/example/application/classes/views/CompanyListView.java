@@ -10,13 +10,11 @@ import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Menu;
@@ -62,7 +60,7 @@ public class CompanyListView extends Main {
     }
 
     private Grid<Company> buildGrid() {
-        final var grid = new Grid<Company>(Company.class, false);
+        final var grid = new Grid<>(Company.class, false);
         grid.setWidthFull();
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
 
@@ -90,9 +88,9 @@ public class CompanyListView extends Main {
     }
 
     private void configureActionsBar() {
-        newBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-        editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        newBtn.addThemeNames("success");
+        editBtn.addThemeNames("primary");
+        deleteBtn.addThemeNames("error");
 
         editBtn.setEnabled(false);
         deleteBtn.setEnabled(false);
@@ -116,7 +114,7 @@ public class CompanyListView extends Main {
             ex.printStackTrace();
             Notification.show("Erro ao listar empresas: " + ex.getMessage(),
                             6000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
             grid.setItems(List.of());
         }
     }
@@ -198,17 +196,17 @@ public class CompanyListView extends Main {
 
                 Notification.show("Empresa atualizada com sucesso.",
                                 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        .addThemeNames("success");
                 dialog.close();
                 reloadGrid();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Notification.show("Erro ao atualizar empresa: " + ex.getMessage(),
                                 5000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        .addThemeNames("error");
             }
         });
-        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.addThemeNames("primary");
 
         Button cancel = new Button("Cancelar", ev -> dialog.close());
 
@@ -234,17 +232,17 @@ public class CompanyListView extends Main {
                 companyService.deleteById(selected.getId());
                 Notification.show("Empresa removida com sucesso.",
                                 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        .addThemeNames("success");
                 confirm.close();
                 reloadGrid();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Notification.show("Erro ao remover empresa: " + ex.getMessage(),
                                 6000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        .addThemeNames("error");
             }
         });
-        yes.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        yes.addThemeNames("error");
 
         Button no = new Button("Cancelar", ev -> confirm.close());
 

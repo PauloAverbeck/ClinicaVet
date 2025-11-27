@@ -11,12 +11,10 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.Menu;
@@ -71,7 +69,7 @@ public class CompanyView extends VerticalLayout {
 
         saveBtn.addClickShortcut(Key.ENTER);
         saveBtn.addClickListener(e -> onSave());
-        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        saveBtn.addThemeNames("primary");
 
         FormLayout form = new FormLayout(name, cbDocType, document, saveBtn);
         form.setMaxWidth("640px");
@@ -83,13 +81,13 @@ public class CompanyView extends VerticalLayout {
             long userId = currentUserService.requireUserId();
             long id = companyService.createForUser(userId, name.getValue(), cbDocType.getValue(), document.getValue());
             Notification.show("Empresa criada com sucesso! ID: " + id, 5000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    .addThemeNames("success");
             name.clear();
             cbDocType.clear();
             document.clear();
         } catch (Exception ex) {
             Notification.show("Erro ao criar empresa: " + ex.getMessage(), 7000, Notification.Position.TOP_CENTER)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
         }
     }
 

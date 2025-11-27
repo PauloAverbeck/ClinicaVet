@@ -2,7 +2,6 @@ package com.example.application.base.ui;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.server.VaadinServiceInitListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,7 @@ class MainErrorHandler {
                     errorEvent.getComponent().flatMap(Component::getUI).ifPresent(ui -> {
                         var notification = new Notification(
                                 "An unexpected error has occurred. Please try again later.");
-                        notification.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        notification.addThemeNames("error");
                         notification.setPosition(Notification.Position.TOP_CENTER);
                         notification.setDuration(3000);
                         ui.access(notification::open);

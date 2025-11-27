@@ -10,12 +10,10 @@ import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
@@ -54,7 +52,7 @@ public class CompanyUsersView extends Main  {
         this.grid = buildGrid();
         add(this.grid);
 
-        addUserBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addUserBtn.addThemeNames("primary");
         addUserBtn.addClickListener(e -> openAddUserDialog());
 
         HorizontalLayout actionsBar = new HorizontalLayout(addUserBtn);
@@ -95,29 +93,29 @@ public class CompanyUsersView extends Main  {
                 try {
                     userCompanyService.setAdmin(row.getUserId(), currentCompanyService.activeCompanyIdOrThrow(), !row.isAdmin());
                     Notification.show("Permissão de admin atualizada com sucesso.", 3000, Notification.Position.MIDDLE)
-                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                            .addThemeNames("success");
                     reloadGrid();
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                     Notification.show("Erro ao atualizar permissão de admin: " + ex.getMessage(),
                                     6000, Notification.Position.MIDDLE)
-                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            .addThemeNames("error");
                 }
             });
 
             Button removeBtn = new Button("Remover");
-            removeBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+            removeBtn.addThemeNames("error");
             removeBtn.addClickListener(event -> {
                 try {
                     userCompanyService.unlink(row.getUserId(), currentCompanyService.activeCompanyIdOrThrow());
                     Notification.show("Usuário removido com sucesso.", 3000, Notification.Position.MIDDLE)
-                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                            .addThemeNames("success");
                     reloadGrid();
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                     Notification.show("Erro ao remover usuário: " + ex.getMessage(),
                                     6000, Notification.Position.MIDDLE)
-                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            .addThemeNames("error");
                 }
             });
             actions.add(adminBtn, removeBtn);
@@ -135,7 +133,7 @@ public class CompanyUsersView extends Main  {
             ex.printStackTrace();
             Notification.show("Erro ao listar usuários: " + ex.getMessage(),
                             6000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
             grid.setItems(List.of());
         }
     }
@@ -157,7 +155,7 @@ public class CompanyUsersView extends Main  {
             ex.printStackTrace();
             Notification.show("Erro ao carregar usuários da empresa: " + ex.getMessage(),
                             6000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
             UI.getCurrent().navigate("company/select");
         }
     }
@@ -171,7 +169,7 @@ public class CompanyUsersView extends Main  {
         emailField.setPlaceholder("exemplo@empresa.com");
 
         Button addBtn = new Button("Adicionar");
-        addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addBtn.addThemeNames("primary");
 
         Button cancelBtn = new Button("Cancelar", e -> dialog.close());
 
@@ -180,7 +178,7 @@ public class CompanyUsersView extends Main  {
                 String email = emailField.getValue().trim();
                 if (email.isEmpty()) {
                     Notification.show("O e-mail não pode estar vazio.", 3000, Notification.Position.MIDDLE)
-                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                            .addThemeNames("error");
                     return;
                 }
 
@@ -188,20 +186,20 @@ public class CompanyUsersView extends Main  {
                 long addedUserId = userCompanyService.addUserByEmailToCompany(email, companyId);
 
                 Notification.show("Usuário vinculado com sucesso!", 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        .addThemeNames("success");
 
                 dialog.close();
                 reloadGrid();
 
             } catch (IllegalStateException ex) {
                 Notification.show(ex.getMessage(), 6000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        .addThemeNames("error");
 
             } catch (SQLException ex) {
                 ex.printStackTrace();
                 Notification.show("Erro ao adicionar usuário: " + ex.getMessage(),
                                 6000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        .addThemeNames("error");
             }
         });
 

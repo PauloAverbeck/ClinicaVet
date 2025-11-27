@@ -10,7 +10,6 @@ import com.example.application.classes.service.UserCompanyService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Hr;
@@ -72,11 +71,11 @@ public class HomeView extends VerticalLayout {
         email.setClearButtonVisible(true);
         password.setRevealButtonVisible(true);
 
-        loginBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        loginBtn.addThemeNames("primary");
         loginBtn.addClickShortcut(Key.ENTER);
         loginBtn.addClickListener(e -> onLogin());
 
-        exitBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+        exitBtn.addThemeNames("error", "tertiary");
         exitBtn.addClickListener(e -> onLogout());
         exitBtn.setVisible(false);
 

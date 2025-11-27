@@ -13,13 +13,11 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
@@ -103,8 +101,8 @@ public class AppUserView extends Main {
     }
 
     private void configureActionsBar() {
-        editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        editBtn.addThemeNames("primary");
+        deleteBtn.addThemeNames("error");
 
         editBtn.setEnabled(false);
         deleteBtn.setEnabled(false);
@@ -135,7 +133,7 @@ public class AppUserView extends Main {
         } catch (SQLException ex) {
             Notification.show("Erro ao listar usuários: " + ex.getMessage(),
                             6000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
             grid.setItems(List.of());
         }
     }
@@ -182,7 +180,7 @@ public class AppUserView extends Main {
             ex.printStackTrace();
             Notification.show("Falha ao carregar empresas: " + ex.getMessage(),
                             5000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
         }
 
         dialog.add(nameField, emailField, companiesField);
@@ -220,17 +218,17 @@ public class AppUserView extends Main {
 
                 Notification.show("Usuário atualizado com sucesso.",
                                 3000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                        .addThemeNames("success");
                 dialog.close();
                 reloadGrid();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Notification.show("Erro ao atualizar usuário: " + ex.getMessage(),
                                 5000, Notification.Position.MIDDLE)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                        .addThemeNames("error");
             }
         });
-        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        save.addThemeNames("success");
 
         Button cancel = new Button("Cancelar", ev -> dialog.close());
 
@@ -250,13 +248,13 @@ public class AppUserView extends Main {
             userService.deleteById(selected.getId());
             Notification.show("Usuário removido com sucesso.",
                             3000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    .addThemeNames("success");
             reloadGrid();
         } catch (Exception ex) {
             ex.printStackTrace();
             Notification.show("Erro ao remover usuário: " + ex.getMessage(),
                             6000, Notification.Position.MIDDLE)
-                    .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    .addThemeNames("error");
         }
     }
 

@@ -40,7 +40,7 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<Client> listAll() throws SQLException {
+    public List<Client> listAllForCompany() throws SQLException {
         return clientRepository.listByCompany(companyId());
     }
 

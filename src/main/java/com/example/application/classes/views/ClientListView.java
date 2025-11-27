@@ -52,8 +52,6 @@ public class ClientListView extends Main  {
         var actionsLayout = new HorizontalLayout(newBtn, editBtn, deleteBtn);
         actionsLayout.setPadding(true);
         add(actionsLayout);
-
-        reloadGrid();
     }
 
     private Grid<Client> buildGrid() {
@@ -132,11 +130,16 @@ public class ClientListView extends Main  {
             long companyId = currentCompanyService.activeCompanyIdOrThrow();
 
             reloadGrid();
-        } catch (Exception ex) {
+        } catch (IllegalStateException ex) {
             ex.printStackTrace();
             Notification.show("Selecione uma empresa para ver os clientes.", 4000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             UI.getCurrent().navigate("company/select");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao carregar clientes: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            UI.getCurrent().navigate("home");
         }
     }
 }

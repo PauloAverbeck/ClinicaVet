@@ -4,6 +4,7 @@ import com.example.application.classes.service.CurrentUserService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -37,6 +38,11 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
 
         toggle = new DrawerToggle();
         addToNavbar(true, toggle);
+
+        Button homeBtn = new Button(new Icon(VaadinIcon.HOME));
+        homeBtn.addThemeNames("tertiary-inline");
+        homeBtn.addClickListener(e -> UI.getCurrent().navigate("home"));
+        addToNavbar(homeBtn);
 
         drawerHeader = createDrawerHeader();
         nav = createSideNav();

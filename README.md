@@ -16,9 +16,9 @@
 - [x] Guard no app para exigir vínculo ativo antes de acessar módulos da empresa.
 #
 - **Semana 3 - Pessoas e Animais**
-- [ ] V2: tabelas person e animal;
+- [x] V2: tabelas person e animal;
 - [ ] Repositórios JDBC e Services com validações (unicidade documento por empresa);
-- [ ] Telas: PersonList/Form (com busca), AnimalList/Form (escolher tutor).
+- [x] Telas: PersonList/Form (com busca), AnimalList/Form (escolher tutor).
 #
 - **Semana 4 - Atendimentos**
 - [ ] V3: tabela attendance;

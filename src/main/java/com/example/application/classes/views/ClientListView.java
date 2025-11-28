@@ -173,11 +173,10 @@ public class ClientListView extends Main  {
             grid.asSingleSelect().clear();
             deleteBtn.setEnabled(false);
             editBtn.setEnabled(false);
-        } catch (Exception ex) {
+        } catch (SQLException ex) {
             ex.printStackTrace();
             Notification.show("Erro ao remover cliente: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
-
     }
 }

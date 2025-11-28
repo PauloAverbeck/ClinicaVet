@@ -134,27 +134,31 @@ public class PetRepository {
     public void updateBasics(Pet pet) throws SQLException {
         final String sql = """
                 UPDATE pet
-                SET name       = ?,
+                SET client_id  = ?,
+                    name       = ?,
                     species    = ?,
                     breed      = ?,
                     birth_date = ?,
                     notes      = ?,
                     version    = version + 1,
                     update_date = NOW()
-                WHERE id = ?
-                    AND version = ?
+                WHERE company_id = ?
+                  AND id = ?
+                  AND version = ?
                 RETURNING version, update_date
                 """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, pet.getName());
-            ps.setString(2, pet.getSpecies());
-            ps.setString(3, pet.getBreed());
-            ps.setObject(4, pet.getBirthDate());
-            ps.setString(5, pet.getNotes());
-            ps.setLong(6, pet.getId());
-            ps.setInt(7, pet.getVersion());
+            ps.setLong(1, pet.getClientId());
+            ps.setString(2, pet.getName());
+            ps.setString(3, pet.getSpecies());
+            ps.setString(4, pet.getBreed());
+            ps.setObject(5, pet.getBirthDate());
+            ps.setString(6, pet.getNotes());
+            ps.setLong(7, pet.getCompanyId());
+            ps.setLong(8, pet.getId());
+            ps.setInt(9, pet.getVersion());
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

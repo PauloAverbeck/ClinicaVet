@@ -1280,3 +1280,5 @@ node_modules
 /lista.txt
 /src/main/bundles/*.dev.bundle
 /src/main/bundles/dev.bundle
+/src/main/resources/bundles/*.dev.bundle
+/src/main/resources/bundles/dev.bundle

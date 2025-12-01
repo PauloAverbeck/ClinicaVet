@@ -1282,3 +1282,4 @@ node_modules
 /src/main/bundles/dev.bundle
 /src/main/resources/bundles/*.dev.bundle
 /src/main/resources/bundles/dev.bundle
+/src/main/resources/*.bundle

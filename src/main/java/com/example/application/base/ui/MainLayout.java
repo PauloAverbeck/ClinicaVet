@@ -15,7 +15,6 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.server.menu.MenuConfiguration;
 import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.Lumo;
 
@@ -54,7 +53,7 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
     }
 
     private Div createDrawerHeader() {
-        var appLogo = VaadinIcon.UMBRELLA.create();
+        var appLogo = VaadinIcon.MENU.create();
         appLogo.addClassNames(TextColor.PRIMARY, IconSize.LARGE);
 
         var appName = new Span("Menu");
@@ -66,12 +65,41 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
     }
 
     private SideNav createSideNav() {
-        var nav = new SideNav();
+        SideNav nav = new SideNav();
         nav.addClassNames(Margin.Horizontal.MEDIUM);
 
-        for (MenuEntry entry : MenuConfiguration.getMenuEntries()) {
+        /*for (MenuEntry entry : MenuConfiguration.getMenuEntries()) {
             nav.addItem(createSideNavItem(entry));
-        }
+        }*/
+
+        SideNavItem home = new SideNavItem("Início");
+        home.setPrefixComponent(VaadinIcon.HOME.create());
+        home.addItem(
+                new SideNavItem("Home", "home", VaadinIcon.HOME.create()),
+                new SideNavItem("Criar conta", "signup", VaadinIcon.PLUS_CIRCLE.create()),
+                new SideNavItem("Esqueci minha senha", "forgot", VaadinIcon.KEY.create())
+        );
+        nav.addItem(home);
+
+        SideNavItem company = new SideNavItem("Empresa");
+        company.setPrefixComponent(VaadinIcon.BUILDING.create());
+        company.addItem(
+                new SideNavItem("Empresas", "companies", VaadinIcon.BUILDING.create()),
+                new SideNavItem("Nova empresa", "company/new", VaadinIcon.PLUS_CIRCLE.create()),
+                new SideNavItem("Selecionar empresa", "company/select", VaadinIcon.CHECK.create()),
+                new SideNavItem("Gerenciar usuários", "company/users", VaadinIcon.USERS.create())
+        );
+        nav.addItem(company);
+
+        SideNavItem registration = new SideNavItem("Cadastros");
+        registration.setPrefixComponent(VaadinIcon.FILE_TEXT.create());
+        registration.addItem(
+                new SideNavItem("Usuários", "users", VaadinIcon.USER.create()),
+                new SideNavItem("Clientes", "clients", VaadinIcon.USER_HEART.create()),
+                new SideNavItem("Pets", "pets", VaadinIcon.PIGGY_BANK.create())
+        );
+        nav.addItem(registration);
+
         return nav;
     }
 

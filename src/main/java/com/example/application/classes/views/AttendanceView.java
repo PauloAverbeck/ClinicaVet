@@ -9,7 +9,6 @@ import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
 import com.example.application.classes.service.PetService;
 import com.example.application.config.ViewGuard;
-import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -23,6 +22,7 @@ import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 
 
 @PageTitle("Atendimento")
@@ -49,6 +49,10 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
         this.attendanceService = attendanceService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
+
+        Locale locale = new Locale("pt", "BR");
+        scheduledAtPicker.setLocale(locale);
+        appointmentAtPicker.setLocale(locale);
 
         var header = new ViewToolbar("Atendimento");
         add(header);
@@ -129,20 +133,33 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
     }
 
     @Override
-    protected void onAttach(AttachEvent attachEvent) {
-        super.onAttach(attachEvent);
-        loadPets();
+    public void beforeEnter(BeforeEnterEvent event) {
 
         ViewGuard.requireLogin(currentUserService, () -> {
             Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
+            event.forwardTo("home");
         });
-        currentCompanyService.activeCompanyIdOrThrow();
-    }
 
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        event.getRouteParameters().get("id").ifPresent(idStr -> {;
+        try {
+            currentCompanyService.activeCompanyIdOrThrow();
+        } catch (Exception ex) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            event.forwardTo("company/select");
+            return;
+        }
+
+        try {
+            loadPets();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao carregar pets: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            event.forwardTo("pets");
+            return;
+        }
+
+        event.getRouteParameters().get("id").ifPresent(idStr -> {
             try {
                 long id = Long.parseLong(idStr);
                 this.attendanceId = id;
@@ -152,18 +169,33 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
                 ex.printStackTrace();
                 Notification.show("ID de atendimento inválido: " + idStr, 5000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
-                event.forwardTo("attendances");
+                event.forwardTo("pets");
             } catch (Exception ex) {
+                ex.printStackTrace();
                 Notification.show("Erro ao carregar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
-                event.forwardTo("attendances");
+                event.forwardTo("pets");
             }
         });
+
+        if (!isEditMode) {
+            var params = event.getLocation().getQueryParameters().getParameters();
+            var petList = params.get("pet");
+            if (petList != null && !petList.isEmpty()) {
+                try {
+                    long petId = Long.parseLong(petList.getFirst());
+                    petComboBox.getListDataView().getItems()
+                            .filter(p -> p.getId() == petId)
+                            .findFirst()
+                            .ifPresent(petComboBox::setValue);
+                } catch (NumberFormatException ignore) {
+                }
+            }
+        }
     }
 
     private void loadExistingAttendance(long id) throws Exception {
         currentCompanyService.activeCompanyIdOrThrow();
-        loadPets();
         try {
             var opt = attendanceService.findById(id);
             if (opt.isEmpty()) {

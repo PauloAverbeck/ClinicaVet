@@ -22,6 +22,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,8 +40,16 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
     private final Grid<Attendance> grid = new Grid<>(Attendance.class, false);
 
     private Button newBtn = new Button("Novo Atendimento");
+    private Button editBtn = new Button("Editar");
+    private Button deleteBtn = new Button("Remover");
     private Long petId;
     private Pet pet;
+
+    private static final DateTimeFormatter ATT_FMT = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yy");
+    private static String formateDateTime(LocalDateTime dt) {
+        if (dt == null) return "";
+        return ATT_FMT.format(dt);
+    }
 
     public AttendanceListView(PetService petService, AttendanceService attendanceService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
         this.petService = petService;
@@ -52,9 +62,30 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
         configureGrid();
         add(grid);
 
+        actionsBar();
+    }
+
+    private void actionsBar() {
         newBtn.addThemeNames("primary");
+        editBtn.addThemeNames("primary");
+        deleteBtn.addThemeNames("error");
+
+        editBtn.setEnabled(false);
+        deleteBtn.setEnabled(false);
+
+        grid.asSingleSelect().addValueChangeListener(e -> {
+            boolean hasSelection = e.getValue() != null;
+            editBtn.setEnabled(hasSelection);
+            deleteBtn.setEnabled(hasSelection);
+        });
+
         newBtn.addClickListener(e -> onNew());
-        add(new HorizontalLayout(newBtn));
+        editBtn.addClickListener(e -> onEdit());
+        deleteBtn.addClickListener(e -> onDelete());
+
+        HorizontalLayout actions = new HorizontalLayout(newBtn, editBtn, deleteBtn);
+        actions.setPadding(true);
+        add(actions);
     }
 
     private void configureGrid() {
@@ -64,11 +95,11 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
                 .setHeader("ID")
                 .setAutoWidth(true);
 
-        grid.addColumn(Attendance::getScheduledAt)
+        grid.addColumn(a -> formateDateTime(a.getScheduledAt()))
                 .setHeader("Agendado para")
                 .setAutoWidth(true);
 
-        grid.addColumn(Attendance::getAppointmentAt)
+        grid.addColumn(a -> formateDateTime(a.getAppointmentAt()))
                 .setHeader("Atendimento em")
                 .setAutoWidth(true);
 
@@ -136,5 +167,38 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
 
     private void onNew() {
         UI.getCurrent().navigate("attendance/new?pet=" + petId);
+    }
+
+    private void onEdit() {
+        Attendance selected = grid.asSingleSelect().getValue();
+        if (selected == null || selected.getId() == 0) {
+            Notification.show("Selecione um atendimento para editar.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("warning");
+            return;
+        }
+        UI.getCurrent().navigate("attendance/" + selected.getId() + "/edit");
+    }
+
+    private void onDelete() {
+        Attendance selected = grid.asSingleSelect().getValue();
+        if (selected == null || selected.getId() == 0) {
+            Notification.show("Selecione um atendimento para remover.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("warning");
+            return;
+        }
+
+        try {
+            attendanceService.deleteById(selected.getId());
+            Notification.show("Atendimento removido com sucesso.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("success");
+            reloadGrid();
+            grid.asSingleSelect().clear();
+            editBtn.setEnabled(false);
+            deleteBtn.setEnabled(false);
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao remover atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+        }
     }
 }

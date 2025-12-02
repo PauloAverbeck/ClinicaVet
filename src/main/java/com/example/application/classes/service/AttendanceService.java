@@ -55,5 +55,4 @@ public class AttendanceService {
     public void deleteById(long id) throws SQLException {
         attendanceRepository.deleteById(id);
     }
-
 }

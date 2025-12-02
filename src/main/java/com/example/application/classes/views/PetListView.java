@@ -36,6 +36,7 @@ public class PetListView extends Main {
     private final Button newBtn = new Button("Novo Pet");
     private final Button editBtn = new Button("Editar");
     private final Button deleteBtn = new Button("Remover");
+    private final Button attendanceBtn = new Button("Atendimentos");
 
     public PetListView(PetService petService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
         this.petService = petService;
@@ -49,7 +50,7 @@ public class PetListView extends Main {
         add(grid);
 
         actionsBar();
-        var actionsLayout = new HorizontalLayout(newBtn, editBtn, deleteBtn);
+        var actionsLayout = new HorizontalLayout(newBtn, editBtn, deleteBtn, attendanceBtn);
         actionsLayout.setPadding(true);
         add(actionsLayout);
     }
@@ -91,14 +92,17 @@ public class PetListView extends Main {
         newBtn.addThemeNames("success");
         editBtn.addThemeNames("primary");
         deleteBtn.addThemeNames("error");
+        attendanceBtn.addThemeNames("tertiary");
 
         editBtn.setEnabled(false);
         deleteBtn.setEnabled(false);
+        attendanceBtn.setEnabled(false);
 
         grid.asSingleSelect().addValueChangeListener(e -> {
             boolean hasSelection = e.getValue() != null;
             editBtn.setEnabled(hasSelection);
             deleteBtn.setEnabled(hasSelection);
+            attendanceBtn.setEnabled(hasSelection);
         });
 
         newBtn.addClickListener(e ->
@@ -109,6 +113,9 @@ public class PetListView extends Main {
 
         deleteBtn.addClickListener(e ->
                 onDeleteSelected());
+
+        attendanceBtn.addClickListener(e ->
+                onAttendanceforSelected());
     }
 
     private void reloadGrid() {
@@ -183,5 +190,14 @@ public class PetListView extends Main {
             Notification.show("Erro ao remover pet: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
+    }
+
+    private void onAttendanceforSelected() {
+        Pet selected = grid.asSingleSelect().getValue();
+        if (selected == null || selected.getId() == 0) {
+            Notification.show("Selecione um pet.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("warning");
+        }
+        UI.getCurrent().navigate("pets/" + selected.getId() + "/attendances");
     }
 }

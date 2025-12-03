@@ -21,8 +21,8 @@
 - [x] Telas: PersonList/Form (com busca), AnimalList/Form (escolher tutor).
 #
 - **Semana 4 - Atendimentos**
-- [ ] V3: tabela attendance;
-- [ ] Telas: AttendanceList/Form (agendamento e realização);
+- [x] V3: tabela attendance;
+- [x] Telas: AttendanceList/Form (agendamento e realização);
 - [ ] Completar ForgotPassword enviando provisória (SMTP real) e ajustar UX (mensagens, validações);
 - [ ] Docker Compose revisado (app + db), README atualizado.
 

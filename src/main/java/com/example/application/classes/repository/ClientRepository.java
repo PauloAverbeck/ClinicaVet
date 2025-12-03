@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,10 +24,26 @@ public class ClientRepository {
 
     public long insert(Client client) throws SQLException {
         final String sql = """
-                INSERT INTO client (company_id, name, email, phone, notes)
-                VALUES (?, ?, ?, ?, ?)
-                RETURNING id, version, creation_date, update_date
-                """;
+        INSERT INTO client (
+            company_id,
+            name,
+            email,
+            phone,
+            notes,
+            doc_type,
+            document,
+            created_by_user_id,
+            cep,
+            uf,
+            city,
+            district,
+            street,
+            number,
+            complement
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING id, version, creation_date, update_date
+        """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -38,6 +53,23 @@ public class ClientRepository {
             ps.setString(3, client.getEmail());
             ps.setString(4, client.getPhone());
             ps.setString(5, client.getNotes());
+
+            ps.setString(6, client.getDocType());
+            ps.setString(7, client.getDocument());
+
+            if (client.getCreatedByUserId() != null) {
+                ps.setLong(8, client.getCreatedByUserId());
+            } else {
+                ps.setNull(8, Types.BIGINT);
+            }
+
+            ps.setString(9, client.getCep());
+            ps.setString(10, client.getUf());
+            ps.setString(11, client.getCity());
+            ps.setString(12, client.getDistrict());
+            ps.setString(13, client.getStreet());
+            ps.setString(14, client.getNumber());
+            ps.setString(15, client.getComplement());
 
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
@@ -126,19 +158,28 @@ public class ClientRepository {
 
     public void updateBasics(Client client) throws SQLException {
         final String sql = """
-                UPDATE client
-                   SET name   = ?,
-                       email  = ?,
-                       phone  = ?,
-                       notes  = ?,
-                       update_date = CURRENT_TIMESTAMP,
-                       version = version + 1
-                 WHERE id = ?
-                   AND company_id = ?
-                   AND deleted_at IS NULL
-                   AND version = ?
-                 RETURNING update_date, version
-                """;
+        UPDATE client
+        SET name = ?,
+            email = ?,
+            phone = ?,
+            notes = ?,
+            doc_type = ?,
+            document = ?,
+            cep = ?,
+            uf = ?,
+            city = ?,
+            district = ?,
+            street = ?,
+            number = ?,
+            complement = ?,
+            update_date = NOW(),
+            version = version + 1
+        WHERE id = ?
+         AND version = ?
+         AND company_id = ?
+         AND deleted_at IS NULL
+        RETURNING version, update_date
+        """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -147,17 +188,25 @@ public class ClientRepository {
             ps.setString(2, client.getEmail());
             ps.setString(3, client.getPhone());
             ps.setString(4, client.getNotes());
-            ps.setLong(5, client.getId());
-            ps.setLong(6, client.getCompanyId());
-            ps.setInt(7, client.getVersion());
+            ps.setString(5, client.getDocType());
+            ps.setString(6, client.getDocument());
+            ps.setString(7, client.getCep());
+            ps.setString(8, client.getUf());
+            ps.setString(9, client.getCity());
+            ps.setString(10, client.getDistrict());
+            ps.setString(11, client.getStreet());
+            ps.setString(12, client.getNumber());
+            ps.setString(13, client.getComplement());
+            ps.setLong(14, client.getId());
+            ps.setInt(15, client.getVersion());
+            ps.setLong(16, client.getCompanyId());
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    LocalDateTime upd = rs.getTimestamp("update_date").toLocalDateTime();
-                    client.setUpdateDate(upd);
                     client.setVersion(rs.getInt("version"));
+                    client.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
                 } else {
-                    throw new SQLException("Conflito de versão ou cliente não encontrado. id=" + client.getId());
+                    throw new SQLException("Conflito de versão ao atualizar client id=" + client.getId());
                 }
             }
         }
@@ -193,18 +242,28 @@ public class ClientRepository {
 
     private static String baseSelect() {
         return """
-                SELECT id,
-                       version,
-                       creation_date,
-                       update_date,
-                       company_id,
-                       name,
-                       email,
-                       phone,
-                       notes,
-                       deleted_at
-                  FROM client
-                """;
+        SELECT id,
+               version,
+               creation_date,
+               update_date,
+               company_id,
+               name,
+               email,
+               phone,
+               notes,
+               deleted_at,
+               doc_type,
+               document,
+               created_by_user_id,
+               cep,
+               uf,
+               city,
+               district,
+               street,
+               number,
+               complement
+        FROM client
+        """;
     }
 
     private static Client map(ResultSet rs) throws SQLException {
@@ -214,13 +273,28 @@ public class ClientRepository {
         c.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
         c.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
         c.setCompanyId(rs.getLong("company_id"));
+
         c.setName(rs.getString("name"));
         c.setEmail(rs.getString("email"));
         c.setPhone(rs.getString("phone"));
         c.setNotes(rs.getString("notes"));
 
-        Timestamp del = rs.getTimestamp("deleted_at");
-        c.setDeletedAt(del != null ? del.toLocalDateTime() : null);
+        Timestamp deleted = rs.getTimestamp("deleted_at");
+        c.setDeletedAt(deleted != null ? deleted.toLocalDateTime() : null);
+
+        c.setDocType(rs.getString("doc_type"));
+        c.setDocument(rs.getString("document"));
+
+        Long createdBy = rs.getObject("created_by_user_id", Long.class);
+        c.setCreatedByUserId(createdBy);
+
+        c.setCep(rs.getString("cep"));
+        c.setUf(rs.getString("uf"));
+        c.setCity(rs.getString("city"));
+        c.setDistrict(rs.getString("district"));
+        c.setStreet(rs.getString("street"));
+        c.setNumber(rs.getString("number"));
+        c.setComplement(rs.getString("complement"));
 
         return c;
     }

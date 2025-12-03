@@ -1,0 +1,2 @@
+ALTER TABLE client
+DROP COLUMN IF EXISTS person_type;

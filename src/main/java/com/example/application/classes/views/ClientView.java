@@ -10,6 +10,7 @@ import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
@@ -28,21 +29,41 @@ public class ClientView extends Main implements BeforeEnterObserver {
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
 
+    // Dados básicos
     private final TextField nameField = new TextField("Nome");
     private final TextField emailField = new TextField("E-mail");
     private final TextField phoneField = new TextField("Telefone");
+
+    private final ComboBox<String> docTypeField = new ComboBox<>("Tipo de documento");
+    private final TextField documentField = new TextField("Documento");
+
+    // Endereço
+    private final TextField cepField = new TextField("CEP");
+    private final TextField ufField = new TextField("UF");
+    private final TextField cityField = new TextField("Cidade");
+    private final TextField districtField = new TextField("Bairro");
+    private final TextField streetField = new TextField("Rua");
+    private final TextField numberField = new TextField("Número");
+    private final TextField complementField = new TextField("Complemento");
+
+    // Observações
     private final TextArea notesArea = new TextArea("Notas");
+
     private final Button saveBtn = new Button("Salvar");
 
     private Long clientId = null;
     private boolean editing = false;
 
-    public ClientView(ClientService clientService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
+    public ClientView(
+            ClientService clientService,
+            CurrentUserService currentUserService,
+            CurrentCompanyService currentCompanyService
+    ) {
         this.clientService = clientService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
 
-        var header = new ViewToolbar("Novo Cliente");
+        var header = new ViewToolbar("Cliente");
         add(header);
 
         var content = new VerticalLayout();
@@ -52,16 +73,43 @@ public class ClientView extends Main implements BeforeEnterObserver {
         add(content);
 
         var form = new FormLayout();
-        form.setMaxWidth("600px");
+        form.setMaxWidth("800px");
 
+        // Configuração campos básicos
         nameField.setRequiredIndicatorVisible(true);
         nameField.setHelperText("Obrigatório");
+
         emailField.setRequiredIndicatorVisible(true);
         emailField.setHelperText("voce@exemplo.com");
+
         notesArea.setWidthFull();
         notesArea.setHeight("120px");
 
-        form.add(nameField, emailField, phoneField, notesArea);
+        // Tipo de documento
+        docTypeField.setItems("CPF", "CNPJ", "Passaporte");
+        docTypeField.setPlaceholder("Selecione");
+        docTypeField.setClearButtonVisible(true);
+
+        cepField.setMaxLength(20);
+        ufField.setMaxLength(2);
+
+        // Layout do formulário
+        form.add(
+                nameField, emailField,
+                phoneField,
+                docTypeField, documentField,
+                cepField, ufField,
+                cityField, districtField,
+                streetField, numberField,
+                complementField,
+                notesArea
+        );
+
+        form.setResponsiveSteps(
+                new FormLayout.ResponsiveStep("0", 1),
+                new FormLayout.ResponsiveStep("500px", 2)
+        );
+
         content.add(form);
 
         saveBtn.addThemeNames("primary");
@@ -73,67 +121,95 @@ public class ClientView extends Main implements BeforeEnterObserver {
         try {
             currentCompanyService.activeCompanyIdOrThrow();
 
-            String name = nameField.getValue().trim();
+            // Validações básicas
+            String name = safeTrim(nameField.getValue());
             if (name.isEmpty()) {
-                Notification.show("Nome do cliente é obrigatório.", 5000, Notification.Position.TOP_CENTER)
-                    .addThemeNames("error");
+                showError("Nome do cliente é obrigatório.");
                 nameField.focus();
                 return;
             }
 
-            String email = emailField.getValue().trim();
+            String email = safeTrim(emailField.getValue());
             if (email.isEmpty()) {
-                Notification.show("E-mail é obrigatório.", 5000, Notification.Position.TOP_CENTER)
-                    .addThemeNames("error");
+                showError("E-mail é obrigatório.");
                 emailField.focus();
                 return;
             }
 
             if (!email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-                Notification.show("E-mail inválido.", 5000, Notification.Position.TOP_CENTER)
-                    .addThemeNames("error");
+                showError("E-mail inválido.");
                 emailField.focus();
                 return;
             }
 
-            String phone = phoneField.getValue().trim();
-            if (!phone.isEmpty() && !phone.matches("^(\\+55\\s?)?(\\(?\\d{2}\\)?\\s?)?(9?\\d{4}[- ]?\\d{4})$")) {
-                Notification.show("Telefone inválido.", 5000, Notification.Position.TOP_CENTER)
-                    .addThemeNames("error");
+            String phone = safeTrim(phoneField.getValue());
+            if (!phone.isEmpty()
+                    && !phone.matches("^(\\+55\\s?)?(\\(?\\d{2}\\)?\\s?)?(9?\\d{4}[- ]?\\d{4})$")) {
+                showError("Telefone inválido.");
                 phoneField.focus();
                 return;
             }
 
-            if (editing && clientId != null) {
-                Client client = clientService.findById(clientId)
-                        .orElseThrow(() -> new IllegalStateException("Cliente não encontrado (id= " + clientId + ")."));
-                client.setName(nameField.getValue());
-                client.setEmail(emailField.getValue());
-                client.setPhone(phoneField.getValue());
-                client.setNotes(notesArea.getValue());
+            String docType = docTypeField.getValue();
+            String document = safeTrim(documentField.getValue());
 
+            if (docType != null && !docType.isBlank() && document.isEmpty()) {
+                showError("Preencha o documento para o tipo selecionado.");
+                documentField.focus();
+                return;
+            }
+
+            Client client;
+
+            if (editing && clientId != null) {
+                client = clientService.findById(clientId)
+                        .orElseThrow(() -> new IllegalStateException("Cliente não encontrado (id=" + clientId + ")."));
+            } else {
+                client = new Client();
+            }
+
+            client.setName(name);
+            client.setEmail(email);
+            client.setPhone(phone);
+            client.setNotes(safeTrim(notesArea.getValue()));
+
+            client.setDocType(docType);
+            client.setDocument(document);
+
+            client.setCep(safeTrim(cepField.getValue()));
+            client.setUf(safeTrim(ufField.getValue()).toUpperCase());
+            client.setCity(safeTrim(cityField.getValue()));
+            client.setDistrict(safeTrim(districtField.getValue()));
+            client.setStreet(safeTrim(streetField.getValue()));
+            client.setNumber(safeTrim(numberField.getValue()));
+            client.setComplement(safeTrim(complementField.getValue()));
+
+            if (editing) {
                 clientService.updateBasics(client);
                 Notification.show("Cliente atualizado com sucesso.")
                         .addThemeNames("success");
-
             } else {
-                Client client = new Client();
-                client.setName(nameField.getValue());
-                client.setEmail(emailField.getValue());
-                client.setPhone(phoneField.getValue());
-                client.setNotes(notesArea.getValue());
-
                 long id = clientService.create(client);
                 Notification.show("Cliente criado com ID: " + id)
-                    .addThemeNames("success");
+                        .addThemeNames("success");
             }
 
             UI.getCurrent().navigate("clients");
         } catch (Exception ex) {
             ex.printStackTrace();
-            Notification.show("Erro ao criar cliente: " + ex.getMessage(), 7000, Notification.Position.TOP_CENTER)
-                .addThemeNames("error");
+            Notification.show("Erro ao salvar cliente: " + ex.getMessage(),
+                            7000, Notification.Position.TOP_CENTER)
+                    .addThemeNames("error");
         }
+    }
+
+    private static String safeTrim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private void showError(String msg) {
+        Notification.show(msg, 5000, Notification.Position.TOP_CENTER)
+                .addThemeNames("error");
     }
 
     @Override
@@ -167,14 +243,15 @@ public class ClientView extends Main implements BeforeEnterObserver {
                 this.clientId = Long.parseLong(idStr);
                 this.editing = true;
                 loadExistingClient();
+                saveBtn.setText("Salvar alterações");
             } catch (NumberFormatException ex) {
-                Notification.show("ID de cliente inválido: ", 5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
+                Notification.show("ID de cliente inválido.", 5000, Notification.Position.MIDDLE)
+                        .addThemeNames("error");
                 event.rerouteTo("clients");
             } catch (Exception ex) {
                 ex.printStackTrace();
                 Notification.show("Erro ao carregar cliente: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
+                        .addThemeNames("error");
                 event.rerouteTo("clients");
             }
         });
@@ -189,15 +266,29 @@ public class ClientView extends Main implements BeforeEnterObserver {
 
         var opt = clientService.findById(clientId);
         if (opt.isEmpty()) {
-            throw new IllegalStateException("Cliente não encontrado (id= "+ clientId + ").");
+            throw new IllegalStateException("Cliente não encontrado (id=" + clientId + ").");
         }
 
         Client client = opt.get();
-        nameField.setValue(client.getName() != null ? client.getName() : "");
-        emailField.setValue(client.getEmail() != null ? client.getEmail() : "");
-        phoneField.setValue(client.getPhone() != null ? client.getPhone() : "");
-        notesArea.setValue(client.getNotes() != null ? client.getNotes() : "");
 
-        saveBtn.setText("Salvar alterações");
+        nameField.setValue(nonNull(client.getName()));
+        emailField.setValue(nonNull(client.getEmail()));
+        phoneField.setValue(nonNull(client.getPhone()));
+        notesArea.setValue(nonNull(client.getNotes()));
+
+        docTypeField.setValue(client.getDocType());
+        documentField.setValue(nonNull(client.getDocument()));
+
+        cepField.setValue(nonNull(client.getCep()));
+        ufField.setValue(nonNull(client.getUf()));
+        cityField.setValue(nonNull(client.getCity()));
+        districtField.setValue(nonNull(client.getDistrict()));
+        streetField.setValue(nonNull(client.getStreet()));
+        numberField.setValue(nonNull(client.getNumber()));
+        complementField.setValue(nonNull(client.getComplement()));
+    }
+
+    private static String nonNull(String value) {
+        return value != null ? value : "";
     }
 }

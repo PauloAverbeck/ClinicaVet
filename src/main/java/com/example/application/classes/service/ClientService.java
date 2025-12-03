@@ -14,10 +14,16 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final CurrentCompanyService currentCompanyService;
+    private final CurrentUserService currentUserService;
 
-    public ClientService(ClientRepository clientRepository, CurrentCompanyService currentCompanyService) {
+    public ClientService(
+            ClientRepository clientRepository,
+            CurrentCompanyService currentCompanyService,
+            CurrentUserService currentUserService
+    ) {
         this.clientRepository = clientRepository;
         this.currentCompanyService = currentCompanyService;
+        this.currentUserService = currentUserService;
     }
 
     private long companyId() {
@@ -29,6 +35,9 @@ public class ClientService {
     @Transactional
     public long create(Client client) throws SQLException {
         client.setCompanyId(companyId());
+        if (currentUserService.isLoggedIn()) {
+            client.setCreatedByUserId(currentUserService.requireUserId());
+        }
         return clientRepository.insert(client);
     }
 
@@ -45,8 +54,8 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<Client> searchByNameOrEmail(String name, int limit) throws SQLException {
-        return clientRepository.searchByNameOrEmail(companyId(), name, limit);
+    public List<Client> searchByNameOrEmail(String query, int limit) throws SQLException {
+        return clientRepository.searchByNameOrEmail(companyId(), query, limit);
     }
 
     /* UPDATE */
@@ -62,6 +71,6 @@ public class ClientService {
     @Transactional
     public void softDelete(long id) throws SQLException {
         long companyId = companyId();
-        clientRepository.softDelete(id, companyId());
+        clientRepository.softDelete(companyId, id);
     }
 }

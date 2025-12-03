@@ -14,6 +14,16 @@ public class Client {
     private String phone;
     private String notes;
     private LocalDateTime deletedAt;
+    private String docType;
+    private String document;
+    private Long createdByUserId;
+    private String cep;
+    private String uf;
+    private String city;
+    private String district;
+    private String street;
+    private String number;
+    private String complement;
 
 
     public long getId() {
@@ -94,5 +104,96 @@ public class Client {
 
     public void setDeletedAt(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public String getDocType() {
+        return docType;
+    }
+
+    public void setDocType(String docType) {
+        this.docType = docType;
+    }
+
+    public String getDocument() {
+        return document;
+    }
+
+    public void setDocument(String document) {
+        this.document = document;
+    }
+
+    public Long getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public void setCreatedByUserId(Long createdByUserId) {
+        this.createdByUserId = createdByUserId;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public void setCep(String cep) {
+        this.cep = cep;
+    }
+
+    public String getUf() {
+        return uf;
+    }
+
+    public void setUf(String uf) {
+        this.uf = uf;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public String getDistrict() {
+        return district;
+    }
+
+    public void setDistrict(String district) {
+        this.district = district;
+    }
+
+    public String getStreet() {
+        return street;
+    }
+
+    public void setStreet(String street) {
+        this.street = street;
+    }
+
+    public String getNumber() {
+        return number;
+    }
+
+    public void setNumber(String number) {
+        this.number = number;
+    }
+
+    public String getComplement() {
+        return complement;
+    }
+
+    public void setComplement(String complement) {
+        this.complement = complement;
+    }
+
+    public String getPersonType() {
+        if (docType == null) return null;
+
+        return switch (docType.toUpperCase()) {
+            case "CPF" -> "Pessoa Física";
+            case "CNPJ" -> "Pessoa Jurídica";
+            case "PASSAPORTE" -> "Pessoa Estrangeira";
+            default -> null;
+        };
     }
 }

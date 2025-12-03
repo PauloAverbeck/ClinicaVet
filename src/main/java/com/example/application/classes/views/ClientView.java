@@ -1,22 +1,21 @@
 package com.example.application.classes.views;
 
 import com.example.application.base.ui.MainLayout;
+import com.example.application.base.ui.component.DocumentField;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Client;
-import com.example.application.classes.service.ClientService;
-import com.example.application.classes.service.CurrentCompanyService;
-import com.example.application.classes.service.CurrentUserService;
+import com.example.application.classes.service.*;
 import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.*;
 
 @PageTitle("Cliente")
@@ -28,16 +27,14 @@ public class ClientView extends Main implements BeforeEnterObserver {
     private final ClientService clientService;
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
+    private final ViaCepService viaCepService;
 
-    // Dados básicos
     private final TextField nameField = new TextField("Nome");
     private final TextField emailField = new TextField("E-mail");
     private final TextField phoneField = new TextField("Telefone");
 
-    private final ComboBox<String> docTypeField = new ComboBox<>("Tipo de documento");
-    private final TextField documentField = new TextField("Documento");
+    private final DocumentField documentField = new DocumentField();
 
-    // Endereço
     private final TextField cepField = new TextField("CEP");
     private final TextField ufField = new TextField("UF");
     private final TextField cityField = new TextField("Cidade");
@@ -46,7 +43,6 @@ public class ClientView extends Main implements BeforeEnterObserver {
     private final TextField numberField = new TextField("Número");
     private final TextField complementField = new TextField("Complemento");
 
-    // Observações
     private final TextArea notesArea = new TextArea("Notas");
 
     private final Button saveBtn = new Button("Salvar");
@@ -54,14 +50,14 @@ public class ClientView extends Main implements BeforeEnterObserver {
     private Long clientId = null;
     private boolean editing = false;
 
-    public ClientView(
-            ClientService clientService,
-            CurrentUserService currentUserService,
-            CurrentCompanyService currentCompanyService
-    ) {
+    public ClientView(ClientService clientService,
+                      CurrentUserService currentUserService,
+                      CurrentCompanyService currentCompanyService,
+                      ViaCepService viaCepService) {
         this.clientService = clientService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
+        this.viaCepService = viaCepService;
 
         var header = new ViewToolbar("Cliente");
         add(header);
@@ -75,29 +71,13 @@ public class ClientView extends Main implements BeforeEnterObserver {
         var form = new FormLayout();
         form.setMaxWidth("800px");
 
-        // Configuração campos básicos
-        nameField.setRequiredIndicatorVisible(true);
-        nameField.setHelperText("Obrigatório");
+        configureFields();
+        configureMasksAndCepAutoFill();
 
-        emailField.setRequiredIndicatorVisible(true);
-        emailField.setHelperText("voce@exemplo.com");
-
-        notesArea.setWidthFull();
-        notesArea.setHeight("120px");
-
-        // Tipo de documento
-        docTypeField.setItems("CPF", "CNPJ", "Passaporte");
-        docTypeField.setPlaceholder("Selecione");
-        docTypeField.setClearButtonVisible(true);
-
-        cepField.setMaxLength(20);
-        ufField.setMaxLength(2);
-
-        // Layout do formulário
         form.add(
                 nameField, emailField,
                 phoneField,
-                docTypeField, documentField,
+                documentField,
                 cepField, ufField,
                 cityField, districtField,
                 streetField, numberField,
@@ -117,50 +97,108 @@ public class ClientView extends Main implements BeforeEnterObserver {
         content.add(saveBtn);
     }
 
+    private void configureFields() {
+        nameField.setRequiredIndicatorVisible(true);
+        nameField.setHelperText("Obrigatório");
+        nameField.setMaxLength(200);
+
+        emailField.setRequiredIndicatorVisible(true);
+        emailField.setHelperText("voce@exemplo.com");
+        emailField.setMaxLength(320);
+
+        phoneField.setMaxLength(32);
+        phoneField.setValueChangeMode(ValueChangeMode.EAGER);
+
+        cepField.setMaxLength(9);
+        cepField.setValueChangeMode(ValueChangeMode.EAGER);
+
+        ufField.setMaxLength(2);
+
+        cityField.setMaxLength(100);
+        districtField.setMaxLength(100);
+        streetField.setMaxLength(150);
+        numberField.setMaxLength(20);
+        complementField.setMaxLength(150);
+
+        notesArea.setWidthFull();
+        notesArea.setHeight("120px");
+    }
+
+    private void configureMasksAndCepAutoFill() {
+        phoneField.addValueChangeListener(e -> {
+            String digits = e.getValue() == null ? "" : e.getValue().replaceAll("\\D", "");
+            if (digits.length() > 11) digits = digits.substring(0, 11);
+
+            String formatted = digits;
+            if (digits.length() == 10) {
+                formatted = digits.replaceFirst("(\\d{2})(\\d{4})(\\d{4})", "($1) $2-$3");
+            } else if (digits.length() == 11) {
+                formatted = digits.replaceFirst("(\\d{2})(\\d{5})(\\d{4})", "($1) $2-$3");
+            }
+            if (!formatted.equals(e.getValue())) {
+                phoneField.setValue(formatted);
+            }
+        });
+
+        cepField.addValueChangeListener(e -> {
+            String raw = e.getValue() == null ? "" : e.getValue();
+            String digits = raw.replaceAll("\\D", "");
+            if (digits.length() > 8) digits = digits.substring(0, 8);
+
+            String formatted = digits;
+            if (digits.length() > 5) {
+                formatted = digits.replaceFirst("(\\d{5})(\\d+)", "$1-$2");
+            }
+
+            if (!formatted.equals(raw)) {
+                cepField.setValue(formatted);
+                return; // evita chamada dupla
+            }
+
+            if (digits.length() == 8) {
+                lookupCepAndFill(digits);
+            }
+        });
+    }
+
+    private void lookupCepAndFill(String digits) {
+        try {
+            var opt = viaCepService.lookup(digits);
+            if (opt.isEmpty()) {
+                Notification.show("CEP não encontrado ou inválido.", 3000, Notification.Position.TOP_CENTER)
+                        .addThemeNames("warning");
+                return;
+            }
+
+            ViaCepResponse dto = opt.get();
+            if (cityField.isEmpty()) {
+                cityField.setValue(nonNull(dto.getLocalidade()));
+            }
+            if (districtField.isEmpty()) {
+                districtField.setValue(nonNull(dto.getBairro()));
+            }
+            if (streetField.isEmpty()) {
+                streetField.setValue(nonNull(dto.getLogradouro()));
+            }
+            if (ufField.isEmpty()) {
+                ufField.setValue(nonNull(dto.getUf()).toUpperCase());
+            }
+            if (complementField.isEmpty()) {
+                complementField.setValue(nonNull(dto.getComplemento()));
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace(); // opcional
+            Notification.show("Erro ao consultar CEP.", 3000, Notification.Position.TOP_CENTER)
+                    .addThemeNames("error");
+        }
+    }
+
     private void onSave() {
         try {
             currentCompanyService.activeCompanyIdOrThrow();
 
-            // Validações básicas
-            String name = safeTrim(nameField.getValue());
-            if (name.isEmpty()) {
-                showError("Nome do cliente é obrigatório.");
-                nameField.focus();
-                return;
-            }
-
-            String email = safeTrim(emailField.getValue());
-            if (email.isEmpty()) {
-                showError("E-mail é obrigatório.");
-                emailField.focus();
-                return;
-            }
-
-            if (!email.matches("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
-                showError("E-mail inválido.");
-                emailField.focus();
-                return;
-            }
-
-            String phone = safeTrim(phoneField.getValue());
-            if (!phone.isEmpty()
-                    && !phone.matches("^(\\+55\\s?)?(\\(?\\d{2}\\)?\\s?)?(9?\\d{4}[- ]?\\d{4})$")) {
-                showError("Telefone inválido.");
-                phoneField.focus();
-                return;
-            }
-
-            String docType = docTypeField.getValue();
-            String document = safeTrim(documentField.getValue());
-
-            if (docType != null && !docType.isBlank() && document.isEmpty()) {
-                showError("Preencha o documento para o tipo selecionado.");
-                documentField.focus();
-                return;
-            }
-
             Client client;
-
             if (editing && clientId != null) {
                 client = clientService.findById(clientId)
                         .orElseThrow(() -> new IllegalStateException("Cliente não encontrado (id=" + clientId + ")."));
@@ -168,13 +206,12 @@ public class ClientView extends Main implements BeforeEnterObserver {
                 client = new Client();
             }
 
-            client.setName(name);
-            client.setEmail(email);
-            client.setPhone(phone);
-            client.setNotes(safeTrim(notesArea.getValue()));
+            client.setName(safeTrim(nameField.getValue()));
+            client.setEmail(safeTrim(emailField.getValue()));
+            client.setPhone(safeTrim(phoneField.getValue()));
 
-            client.setDocType(docType);
-            client.setDocument(document);
+            client.setDocType(documentField.getDocType());
+            client.setDocument(safeTrim(documentField.getValue()));
 
             client.setCep(safeTrim(cepField.getValue()));
             client.setUf(safeTrim(ufField.getValue()).toUpperCase());
@@ -183,6 +220,8 @@ public class ClientView extends Main implements BeforeEnterObserver {
             client.setStreet(safeTrim(streetField.getValue()));
             client.setNumber(safeTrim(numberField.getValue()));
             client.setComplement(safeTrim(complementField.getValue()));
+
+            client.setNotes(safeTrim(notesArea.getValue()));
 
             if (editing) {
                 clientService.updateBasics(client);
@@ -195,11 +234,11 @@ public class ClientView extends Main implements BeforeEnterObserver {
             }
 
             UI.getCurrent().navigate("clients");
+        } catch (ClientValidationException vex) {
+            showError(vex.getMessage());
         } catch (Exception ex) {
             ex.printStackTrace();
-            Notification.show("Erro ao salvar cliente: " + ex.getMessage(),
-                            7000, Notification.Position.TOP_CENTER)
-                    .addThemeNames("error");
+            showError("Erro ao salvar cliente: " + ex.getMessage());
         }
     }
 
@@ -210,6 +249,10 @@ public class ClientView extends Main implements BeforeEnterObserver {
     private void showError(String msg) {
         Notification.show(msg, 5000, Notification.Position.TOP_CENTER)
                 .addThemeNames("error");
+    }
+
+    private static String nonNull(String value) {
+        return value != null ? value : "";
     }
 
     @Override
@@ -276,19 +319,23 @@ public class ClientView extends Main implements BeforeEnterObserver {
         phoneField.setValue(nonNull(client.getPhone()));
         notesArea.setValue(nonNull(client.getNotes()));
 
-        docTypeField.setValue(client.getDocType());
-        documentField.setValue(nonNull(client.getDocument()));
+        documentField.setDocType(client.getDocType());
+        documentField.setValue(nonNull(client.getDocument())); // DocumentField já formata
 
-        cepField.setValue(nonNull(client.getCep()));
+        String cep = client.getCep();
+        if (cep != null && !cep.isBlank()) {
+            String digits = cep.replaceAll("\\D", "");
+            if (digits.matches("\\d{8}")) {
+                cep = digits.replaceFirst("(\\d{5})(\\d{3})", "$1-$2");
+            }
+        }
+        cepField.setValue(nonNull(cep));
+
         ufField.setValue(nonNull(client.getUf()));
         cityField.setValue(nonNull(client.getCity()));
         districtField.setValue(nonNull(client.getDistrict()));
         streetField.setValue(nonNull(client.getStreet()));
         numberField.setValue(nonNull(client.getNumber()));
         complementField.setValue(nonNull(client.getComplement()));
-    }
-
-    private static String nonNull(String value) {
-        return value != null ? value : "";
     }
 }

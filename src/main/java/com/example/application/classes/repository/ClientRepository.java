@@ -298,4 +298,35 @@ public class ClientRepository {
 
         return c;
     }
+
+    public boolean existsByCompanyAndDocument(long companyId,
+                                              String docType,
+                                              String document,
+                                              Long ignoreId) throws SQLException {
+        final String sqlBase = """
+            SELECT 1
+              FROM client
+             WHERE company_id = ?
+               AND doc_type = ?
+               AND document = ?
+               AND deleted_at IS NULL
+            """;
+
+        String sql = sqlBase + (ignoreId != null ? " AND id <> ?" : "") + " LIMIT 1";
+
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setLong(1, companyId);
+            ps.setString(2, docType);
+            ps.setString(3, document);
+            if (ignoreId != null) {
+                ps.setLong(4, ignoreId);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
 }

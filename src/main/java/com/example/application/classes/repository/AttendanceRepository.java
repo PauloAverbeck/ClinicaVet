@@ -25,8 +25,8 @@ public class AttendanceRepository {
     public long insert(Attendance attendance) throws SQLException {
         final String sql = """
                INSERT INTO attendance
-                    (animal_id, created_by_user_id, scheduled_at, appointment_at, description)
-               VALUES (?, ?, ?, ?, ?)
+                    (animal_id, created_by_user_id, appointment_at, description)
+               VALUES (?, ?, ?, ?)
                RETURNING id, version, creation_date, update_date
                """;
 
@@ -34,15 +34,15 @@ public class AttendanceRepository {
              PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setLong(1, attendance.getAnimalId());
+
             if (attendance.getCreatedByUserId() != null) {
                 ps.setLong(2, attendance.getCreatedByUserId());
             } else {
                 ps.setNull(2, Types.BIGINT);
             }
 
-            ps.setObject(3, attendance.getScheduledAt());
-            ps.setObject(4, attendance.getAppointmentAt());
-            ps.setString(5, attendance.getDescription());
+            ps.setObject(3, attendance.getAppointmentAt());
+            ps.setString(4, attendance.getDescription());
 
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
@@ -79,7 +79,7 @@ public class AttendanceRepository {
     public List<Attendance> listByAnimal(long animalId) throws SQLException {
         final String sql = baseSelect()
                 + " WHERE animal_id = ?"
-                + " ORDER BY COALESCE(appointment_at, scheduled_at) DESC, id DESC";
+                + " ORDER BY appointment_at DESC NULLS LAST, id DESC";
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -101,7 +101,7 @@ public class AttendanceRepository {
     public void updateBasics(Attendance attendance) throws SQLException {
         final String sql = """
                UPDATE attendance
-               SET scheduled_at = ?, appointment_at = ?, description = ?, update_date = NOW(), version = version + 1
+               SET appointment_at = ?, description = ?, update_date = NOW(), version = version + 1
                WHERE id = ? AND version = ?
                RETURNING version, update_date
                """;
@@ -109,11 +109,10 @@ public class AttendanceRepository {
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setObject(1, attendance.getScheduledAt());
-            ps.setObject(2, attendance.getAppointmentAt());
-            ps.setString(3, attendance.getDescription());
-            ps.setLong(4, attendance.getId());
-            ps.setInt(5, attendance.getVersion());
+            ps.setObject(1, attendance.getAppointmentAt());
+            ps.setString(2, attendance.getDescription());
+            ps.setLong(3, attendance.getId());
+            ps.setInt(4, attendance.getVersion());
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -147,7 +146,7 @@ public class AttendanceRepository {
     private static String baseSelect() {
         return """
                SELECT id, version, creation_date, update_date,
-                      animal_id, created_by_user_id, scheduled_at, appointment_at, description
+                      animal_id, created_by_user_id, appointment_at, description
                FROM attendance
                """;
     }
@@ -162,9 +161,6 @@ public class AttendanceRepository {
 
         Long createdBy = rs.getObject("created_by_user_id", Long.class);
         attendance.setCreatedByUserId(createdBy);
-
-        Timestamp scheduled = rs.getTimestamp("scheduled_at");
-        attendance.setScheduledAt(scheduled != null ? scheduled.toLocalDateTime() : null);
 
         Timestamp appointment = rs.getTimestamp("appointment_at");
         attendance.setAppointmentAt(appointment != null ? appointment.toLocalDateTime() : null);

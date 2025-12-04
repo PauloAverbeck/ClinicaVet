@@ -95,10 +95,6 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
                 .setHeader("ID")
                 .setAutoWidth(true);
 
-        grid.addColumn(a -> formateDateTime(a.getScheduledAt()))
-                .setHeader("Agendado para")
-                .setAutoWidth(true);
-
         grid.addColumn(a -> formateDateTime(a.getAppointmentAt()))
                 .setHeader("Atendimento em")
                 .setAutoWidth(true);

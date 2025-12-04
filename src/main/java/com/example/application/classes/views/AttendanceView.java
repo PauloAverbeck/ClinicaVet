@@ -4,10 +4,7 @@ import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Attendance;
 import com.example.application.classes.model.Pet;
-import com.example.application.classes.service.AttendanceService;
-import com.example.application.classes.service.CurrentCompanyService;
-import com.example.application.classes.service.CurrentUserService;
-import com.example.application.classes.service.PetService;
+import com.example.application.classes.service.*;
 import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -35,7 +32,6 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
 
-    private final DateTimePicker scheduledAtPicker = new DateTimePicker("Agendado para");
     private final DateTimePicker appointmentAtPicker = new DateTimePicker("Atendimento em");
     private final TextArea descriptionArea = new TextArea("Descrição");
     private final Button saveBtn = new Button("Salvar");
@@ -44,14 +40,16 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
     private Long attendanceId;
     private boolean isEditMode = false;
 
-    public AttendanceView(PetService petService, AttendanceService attendanceService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
+    public AttendanceView(PetService petService,
+                          AttendanceService attendanceService,
+                          CurrentUserService currentUserService,
+                          CurrentCompanyService currentCompanyService) {
         this.petService = petService;
         this.attendanceService = attendanceService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
 
         Locale locale = new Locale("pt", "BR");
-        scheduledAtPicker.setLocale(locale);
         appointmentAtPicker.setLocale(locale);
 
         var header = new ViewToolbar("Atendimento");
@@ -68,12 +66,13 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
 
         descriptionArea.setWidthFull();
         descriptionArea.setMinHeight("120px");
+        descriptionArea.setMaxLength(2000);
 
         petComboBox.setRequiredIndicatorVisible(true);
         petComboBox.setHelperText("Obrigatório");
         petComboBox.setItemLabelGenerator(p -> p.getName() + " (ID: " + p.getId() + ")");
 
-        form.add(petComboBox, scheduledAtPicker, appointmentAtPicker, descriptionArea);
+        form.add(petComboBox, appointmentAtPicker, descriptionArea);
         content.add(form);
 
         saveBtn.addThemeNames("primary");
@@ -92,30 +91,24 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
                 return;
             }
 
-            var scheduledAt = scheduledAtPicker.getValue();
             var appointmentAt = appointmentAtPicker.getValue();
             var description = descriptionArea.getValue() != null ? descriptionArea.getValue().trim() : "";
-
-            if (scheduledAt == null && appointmentAt == null && description.isEmpty()) {
-                Notification.show("Preencha ao menos um dos campos para salvar o atendimento.", 3000, Notification.Position.MIDDLE)
-                        .addThemeNames("warning");
-                return;
-            }
 
             if (isEditMode && attendanceId != null) {
                 var attendance = attendanceService.findById(attendanceId)
                         .orElseThrow(() -> new IllegalStateException("Atendimento não encontrado para edição."));
+
                 attendance.setAnimalId(selectedPet.getId());
-                attendance.setScheduledAt(scheduledAt);
                 attendance.setAppointmentAt(appointmentAt);
                 attendance.setDescription(description);
+
                 attendanceService.updateBasics(attendance);
+
                 Notification.show("Atendimento atualizado com sucesso.", 3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
             } else {
                 var attendance = new Attendance();
                 attendance.setAnimalId(selectedPet.getId());
-                attendance.setScheduledAt(scheduledAt);
                 attendance.setAppointmentAt(appointmentAt);
                 attendance.setDescription(description);
 
@@ -126,8 +119,17 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
             }
 
             UI.getCurrent().navigate("pets/" + selectedPet.getId() + "/attendances");
-        } catch (Exception ex) {
+
+        } catch (AttendanceValidationException vex) {
+            Notification.show(vex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+        } catch (SQLException ex) {
+            ex.printStackTrace();
             Notification.show("Erro ao salvar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Notification.show("Erro inesperado ao salvar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
     }
@@ -206,12 +208,6 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
             }
 
             Attendance attendance = opt.get();
-
-            if (attendance.getScheduledAt() != null) {
-                scheduledAtPicker.setValue(attendance.getScheduledAt());
-            } else {
-                scheduledAtPicker.clear();
-            }
 
             if (attendance.getAppointmentAt() != null) {
                 appointmentAtPicker.setValue(attendance.getAppointmentAt());

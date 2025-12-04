@@ -11,7 +11,6 @@ public class Attendance {
 
     private long animalId;
     private Long createdByUserId;
-    private LocalDateTime scheduledAt;
     private LocalDateTime appointmentAt;
     private String description;
 
@@ -61,14 +60,6 @@ public class Attendance {
 
     public void setCreatedByUserId(Long createdByUserId) {
         this.createdByUserId = createdByUserId;
-    }
-
-    public LocalDateTime getScheduledAt() {
-        return scheduledAt;
-    }
-
-    public void setScheduledAt(LocalDateTime scheduledAt) {
-        this.scheduledAt = scheduledAt;
     }
 
     public LocalDateTime getAppointmentAt() {

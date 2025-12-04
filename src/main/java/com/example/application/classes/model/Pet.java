@@ -112,4 +112,7 @@ public class Pet {
         this.deletedAt = deletedAt;
     }
 
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

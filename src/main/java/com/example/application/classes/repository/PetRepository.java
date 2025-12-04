@@ -145,6 +145,7 @@ public class PetRepository {
                 WHERE company_id = ?
                   AND id = ?
                   AND version = ?
+                  AND deleted_at IS NULL
                 RETURNING version, update_date
                 """;
 

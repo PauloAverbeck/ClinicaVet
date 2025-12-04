@@ -4,10 +4,7 @@ import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Client;
 import com.example.application.classes.model.Pet;
-import com.example.application.classes.service.ClientService;
-import com.example.application.classes.service.CurrentCompanyService;
-import com.example.application.classes.service.CurrentUserService;
-import com.example.application.classes.service.PetService;
+import com.example.application.classes.service.*;
 import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
@@ -24,6 +21,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 
 @PageTitle("Pet")
@@ -68,29 +66,43 @@ public class PetView extends Main implements BeforeEnterObserver {
         var form = new FormLayout();
         form.setMaxWidth("600px");
 
+        configureFields();
+
+        form.add(
+                clientField,
+                nameField,
+                speciesField,
+                breedField,
+                birthDatePicker,
+                notesArea
+        );
+        content.add(form);
+
+        saveBtn.addThemeNames("primary");
+        saveBtn.addClickListener(e -> onSave());
+        content.add(saveBtn);
+    }
+
+    private void configureFields() {
         clientField.setRequiredIndicatorVisible(true);
         clientField.setHelperText("Obrigatório");
         clientField.setItemLabelGenerator(Client::getName);
 
         nameField.setRequiredIndicatorVisible(true);
         nameField.setHelperText("Obrigatório");
+        nameField.setMaxLength(200);
 
         speciesField.setRequiredIndicatorVisible(true);
         speciesField.setHelperText("Obrigatório");
+        speciesField.setMaxLength(50);
 
         breedField.setRequiredIndicatorVisible(true);
         breedField.setHelperText("Obrigatório");
+        breedField.setMaxLength(100);
 
         notesArea.setWidthFull();
         notesArea.setMaxLength(1000);
         notesArea.setHelperText("Observações gerais sobre o pet");
-
-        form.add(clientField, nameField, speciesField, breedField, birthDatePicker, notesArea);
-        content.add(form);
-
-        saveBtn.addThemeNames("primary");
-        saveBtn.addClickListener(e -> onSave());
-        content.add(saveBtn);
     }
 
     @Override
@@ -134,70 +146,35 @@ public class PetView extends Main implements BeforeEnterObserver {
         try {
             currentCompanyService.activeCompanyIdOrThrow();
 
+            Pet pet;
+            if (petId != null) {
+                pet = petService.findById(petId)
+                        .orElseThrow(() -> new IllegalStateException("Pet não encontrado."));
+            } else {
+                pet = new Pet();
+            }
+
             Client selectedClient = clientField.getValue();
-            String name = trimOrEmpty(nameField.getValue());
-            String species = trimOrEmpty(speciesField.getValue());
-            String breed = trimOrEmpty(breedField.getValue());
+            pet.setClientId(selectedClient != null ? selectedClient.getId() : 0L);
 
-            if (selectedClient == null) {
-                Notification.show("O cliente é obrigatório.", 3000, Position.MIDDLE)
-                        .addThemeNames("error");
-                clientField.focus();
-                return;
-            }
-            long clientId = selectedClient.getId();
+            pet.setName(trimOrEmpty(nameField.getValue()));
+            pet.setSpecies(trimOrEmpty(speciesField.getValue()));
+            pet.setBreed(trimOrEmpty(breedField.getValue()));
 
-            if (name.isEmpty()) {
-                Notification.show("O nome do pet é obrigatório.", 3000, Position.MIDDLE)
-                        .addThemeNames("error");
-                nameField.focus();
-                return;
+            LocalDate birth = birthDatePicker.getValue();
+            if (birth != null) {
+                pet.setBirthDate(birth.atStartOfDay());
+            } else {
+                pet.setBirthDate(null);
             }
-            if (species.isEmpty()) {
-                Notification.show("A espécie do pet é obrigatória.", 3000, Position.MIDDLE)
-                        .addThemeNames("error");
-                speciesField.focus();
-                return;
-            }
-            if (breed.isEmpty()) {
-                Notification.show("A raça do pet é obrigatória.", 3000, Position.MIDDLE)
-                        .addThemeNames("error");
-                breedField.focus();
-                return;
-            }
+
+            pet.setNotes(trimOrEmpty(notesArea.getValue()));
 
             if (petId != null) {
-                Pet pet = petService.findById(petId)
-                        .orElseThrow(() -> new IllegalStateException("Pet não encontrado."));
-
-                pet.setClientId(clientId);
-                pet.setName(name);
-                pet.setSpecies(species);
-                pet.setBreed(breed);
-                pet.setBirthDate(
-                        birthDatePicker.getValue() != null
-                                ? birthDatePicker.getValue().atStartOfDay()
-                                : null
-                );
-                pet.setNotes(notesArea.getValue());
-
                 petService.updateBasics(pet);
                 Notification.show("Pet atualizado com sucesso.", 3000, Position.MIDDLE)
                         .addThemeNames("success");
-
             } else {
-                Pet pet = new Pet();
-                pet.setClientId(clientId);
-                pet.setName(name);
-                pet.setSpecies(species);
-                pet.setBreed(breed);
-                pet.setBirthDate(
-                        birthDatePicker.getValue() != null
-                                ? birthDatePicker.getValue().atStartOfDay()
-                                : null
-                );
-                pet.setNotes(notesArea.getValue());
-
                 long id = petService.create(pet);
                 Notification.show("Pet criado com ID: " + id, 3000, Position.MIDDLE)
                         .addThemeNames("success");
@@ -205,6 +182,9 @@ public class PetView extends Main implements BeforeEnterObserver {
 
             UI.getCurrent().navigate("pets");
 
+        } catch (PetValidationException vex) {
+            Notification.show(vex.getMessage(), 4000, Position.MIDDLE)
+                    .addThemeNames("error");
         } catch (IllegalStateException ex) {
             ex.printStackTrace();
             Notification.show(ex.getMessage(), 4000, Position.MIDDLE)
@@ -265,7 +245,7 @@ public class PetView extends Main implements BeforeEnterObserver {
 
             notesArea.setValue(pet.getNotes() != null ? pet.getNotes() : "");
 
-            if (pet.getClientId() != 0L) {
+            if (pet.getClientId() != 0L && clientField.getListDataView() != null) {
                 clientField.getListDataView().getItems()
                         .filter(c -> c.getId() == pet.getClientId())
                         .findFirst()

@@ -38,7 +38,9 @@ public class PetListView extends Main {
     private final Button deleteBtn = new Button("Remover");
     private final Button attendanceBtn = new Button("Atendimentos");
 
-    public PetListView(PetService petService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
+    public PetListView(PetService petService,
+                       CurrentUserService currentUserService,
+                       CurrentCompanyService currentCompanyService) {
         this.petService = petService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
@@ -61,29 +63,29 @@ public class PetListView extends Main {
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
 
         grid.addColumn(Pet::getId)
-            .setHeader("ID")
-            .setAutoWidth(true)
-            .setSortable(true);
+                .setHeader("ID")
+                .setAutoWidth(true)
+                .setSortable(true);
 
         grid.addColumn(Pet::getName)
-            .setHeader("Nome")
-            .setAutoWidth(true)
-            .setSortable(true);
+                .setHeader("Nome")
+                .setAutoWidth(true)
+                .setSortable(true);
 
         grid.addColumn(Pet::getSpecies)
-            .setHeader("Espécie")
-            .setAutoWidth(true)
-            .setSortable(true);
+                .setHeader("Espécie")
+                .setAutoWidth(true)
+                .setSortable(true);
 
         grid.addColumn(Pet::getBreed)
-            .setHeader("Raça")
-            .setAutoWidth(true)
-            .setSortable(true);
+                .setHeader("Raça")
+                .setAutoWidth(true)
+                .setSortable(true);
 
         grid.addColumn(p -> p.getBirthDate() != null ? p.getBirthDate().toLocalDate() : null)
-            .setHeader("Data de Nascimento")
-            .setAutoWidth(true)
-            .setSortable(true);
+                .setHeader("Data de Nascimento")
+                .setAutoWidth(true)
+                .setSortable(true);
 
         return grid;
     }
@@ -105,17 +107,10 @@ public class PetListView extends Main {
             attendanceBtn.setEnabled(hasSelection);
         });
 
-        newBtn.addClickListener(e ->
-                onNew());
-
-        editBtn.addClickListener(e ->
-                onEditSelected());
-
-        deleteBtn.addClickListener(e ->
-                onDeleteSelected());
-
-        attendanceBtn.addClickListener(e ->
-                onAttendanceforSelected());
+        newBtn.addClickListener(e -> onNew());
+        editBtn.addClickListener(e -> onEditSelected());
+        deleteBtn.addClickListener(e -> onDeleteSelected());
+        attendanceBtn.addClickListener(e -> onAttendanceForSelected());
     }
 
     private void reloadGrid() {
@@ -124,8 +119,9 @@ public class PetListView extends Main {
             grid.setItems(pets);
         } catch (SQLException ex) {
             ex.printStackTrace();
-            Notification.show("Erro ao carregar lista de pets: " + ex.getMessage(), 5000, Notification.Position.TOP_CENTER)
-                .addThemeNames("error");
+            Notification.show("Erro ao carregar lista de pets: " + ex.getMessage(),
+                            5000, Notification.Position.TOP_CENTER)
+                    .addThemeNames("error");
             grid.setItems(List.of());
         }
     }
@@ -135,7 +131,8 @@ public class PetListView extends Main {
         super.onAttach(attachEvent);
         try {
             ViewGuard.requireLogin(currentUserService, () -> {
-                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE)
+                        .addThemeNames("error");
                 UI.getCurrent().navigate("home");
             });
 
@@ -145,12 +142,12 @@ public class PetListView extends Main {
         } catch (IllegalStateException ex) {
             ex.printStackTrace();
             Notification.show("Selecione uma empresa para ver os pets.", 4000, Notification.Position.MIDDLE)
-                .addThemeNames("error");
+                    .addThemeNames("error");
             UI.getCurrent().navigate("company/select");
         } catch (Exception ex) {
             ex.printStackTrace();
             Notification.show("Erro ao carregar pets: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                .addThemeNames("error");
+                    .addThemeNames("error");
             UI.getCurrent().navigate("home");
         }
     }
@@ -183,8 +180,9 @@ public class PetListView extends Main {
                     .addThemeNames("success");
             reloadGrid();
             grid.asSingleSelect().clear();
-            deleteBtn.setEnabled(false);
             editBtn.setEnabled(false);
+            deleteBtn.setEnabled(false);
+            attendanceBtn.setEnabled(false);
         } catch (SQLException ex) {
             ex.printStackTrace();
             Notification.show("Erro ao remover pet: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
@@ -192,11 +190,12 @@ public class PetListView extends Main {
         }
     }
 
-    private void onAttendanceforSelected() {
+    private void onAttendanceForSelected() {
         Pet selected = grid.asSingleSelect().getValue();
         if (selected == null || selected.getId() == 0) {
             Notification.show("Selecione um pet.", 3000, Notification.Position.MIDDLE)
                     .addThemeNames("warning");
+            return;
         }
         UI.getCurrent().navigate("pets/" + selected.getId() + "/attendances");
     }

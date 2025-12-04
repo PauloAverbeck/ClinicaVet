@@ -14,11 +14,13 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final CurrentCompanyService currentCompanyService;
+    private final CurrentUserService currentUserService;
 
     public ClientService(ClientRepository clientRepository,
-                         CurrentCompanyService currentCompanyService) {
+                         CurrentCompanyService currentCompanyService, CurrentUserService currentUserService) {
         this.clientRepository = clientRepository;
         this.currentCompanyService = currentCompanyService;
+        this.currentUserService = currentUserService;
     }
 
     private long companyId() {
@@ -226,6 +228,9 @@ public class ClientService {
     @Transactional
     public long create(Client client) throws SQLException {
         client.setCompanyId(companyId());
+        if (currentUserService.isLoggedIn()) {
+            client.setCreatedByUserId(currentUserService.requireUserId());
+        }
         validate(client);
         return clientRepository.insert(client);
     }

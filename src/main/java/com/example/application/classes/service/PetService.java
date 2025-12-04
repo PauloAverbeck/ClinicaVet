@@ -15,10 +15,12 @@ public class PetService {
 
     private final PetRepository petRepository;
     private final CurrentCompanyService currentCompanyService;
+    private final CurrentUserService currentUserService;
 
-    public PetService(PetRepository petRepository, CurrentCompanyService currentCompanyService) {
+    public PetService(PetRepository petRepository, CurrentCompanyService currentCompanyService, CurrentUserService currentUserService) {
         this.petRepository = petRepository;
         this.currentCompanyService = currentCompanyService;
+        this.currentUserService = currentUserService;
     }
 
     private long companyId() {
@@ -44,7 +46,7 @@ public class PetService {
         }
 
         // Tutor
-        if (pet.getClientId() == 0) {
+        if (pet.getClientId() <= 0) {
             throw new PetValidationException("Selecione o tutor do pet.");
         }
 
@@ -73,6 +75,9 @@ public class PetService {
     @Transactional
     public long create(Pet pet) throws SQLException {
         pet.setCompanyId(companyId());
+        if (currentUserService.isLoggedIn()) {
+            pet.setCreatedByUserId(currentUserService.requireUserId());
+        }
         validate(pet);
         return petRepository.insert(pet);
     }

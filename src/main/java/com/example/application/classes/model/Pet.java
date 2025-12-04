@@ -9,6 +9,7 @@ public class Pet {
     private LocalDateTime updateDate;
     private long companyId;
     private long clientId;
+    private Long createdByUserId;
     private String name;
     private String species;
     private String breed;
@@ -64,6 +65,15 @@ public class Pet {
     public void setClientId(long clientId) {
         this.clientId = clientId;
     }
+
+    public Long getCreatedByUserId() {
+        return createdByUserId;
+    }
+
+    public void setCreatedByUserId(Long createdByUserId) {
+        this.createdByUserId = createdByUserId;
+    }
+
     public String getName() {
         return name;
     }

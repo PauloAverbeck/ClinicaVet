@@ -24,8 +24,8 @@ public class PetRepository {
 
     public long insert(Pet pet) throws SQLException {
         final String sql = """
-                INSERT INTO pet (company_id, client_id, name, species, breed, birth_date, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO pet (company_id, client_id, created_by_user_id, name, species, breed, birth_date, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id, version, creation_date, update_date
                 """;
 
@@ -34,11 +34,12 @@ public class PetRepository {
 
             preparedStatement.setLong(1, pet.getCompanyId());
             preparedStatement.setLong(2, pet.getClientId());
-            preparedStatement.setString(3, pet.getName());
-            preparedStatement.setString(4, pet.getSpecies());
-            preparedStatement.setString(5, pet.getBreed());
-            preparedStatement.setObject(6, pet.getBirthDate());
-            preparedStatement.setString(7, pet.getNotes());
+            preparedStatement.setLong(3, pet.getCreatedByUserId());
+            preparedStatement.setString(4, pet.getName());
+            preparedStatement.setString(5, pet.getSpecies());
+            preparedStatement.setString(6, pet.getBreed());
+            preparedStatement.setObject(7, pet.getBirthDate());
+            preparedStatement.setString(8, pet.getNotes());
 
             try (var rs = preparedStatement.executeQuery()) {
                 rs.next();
@@ -74,7 +75,7 @@ public class PetRepository {
 
     public List<Pet> listByClient(long companyId, long clientId) throws SQLException {
         final String sql = baseSelect() +
-                " WHERE company_id = ? AND client_id = ? AND deleted_at IS NULL ORDER BY name";
+                " WHERE company_id = ? AND client_id = ? AND deleted_at IS NULL ORDER BY name, id";
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -93,7 +94,7 @@ public class PetRepository {
 
     public List<Pet> listByCompany(long companyId) throws SQLException {
         final String sql = baseSelect() +
-                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY name";
+                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY name, id";
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -206,6 +207,7 @@ public class PetRepository {
                         update_date,
                         company_id,
                         client_id,
+                        created_by_user_id,
                         name,
                         species,
                         breed,
@@ -224,6 +226,7 @@ public class PetRepository {
         pet.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
         pet.setCompanyId(rs.getLong("company_id"));
         pet.setClientId(rs.getLong("client_id"));
+        pet.setCreatedByUserId(rs.getLong("created_by_user_id"));
         pet.setName(rs.getString("name"));
         pet.setSpecies(rs.getString("species"));
         pet.setBreed(rs.getString("breed"));

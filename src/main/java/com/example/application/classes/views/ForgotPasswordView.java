@@ -20,14 +20,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 @PageTitle("Esqueci minha senha")
 @Route(value = "forgot", layout = MainLayout.class)
-@Menu(title = "Esqueci Minha Senha", icon = "la la-key", order = 3)
+@Menu(title = "Esqueci minha senha", icon = "la la-key", order = 3)
 @AnonymousAllowed
 public class ForgotPasswordView extends VerticalLayout {
 
     private final AppUserService appUserService;
 
     private final EmailField email = new EmailField("E-mail");
-    private final Button enviarBtn = new Button("Enviar instruções");
+    private final Button enviarBtn = new Button("Nova senha");
     private final Button voltarLoginBtn = new Button("Voltar para o login");
 
     @Autowired
@@ -39,7 +39,7 @@ public class ForgotPasswordView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Esqueci Minha Senha");
+        var header = new ViewToolbar("Esqueci minha senha");
         add(header);
 
         var body = new CenteredBody();
@@ -51,7 +51,7 @@ public class ForgotPasswordView extends VerticalLayout {
         H1 title = new H1("Esqueci minha senha");
         Paragraph subtitle = new Paragraph(
                 "Digite seu e-mail. Se existir uma conta associada, enviaremos uma "
-                        + "senha provisória para você entrar e definir uma nova senha."
+                        + "nova senha para você entrar."
         );
 
         email.setPlaceholder("voce@exemplo.com");
@@ -90,12 +90,17 @@ public class ForgotPasswordView extends VerticalLayout {
         }
         setLoading(true);
         try {
-            appUserService.forgotPassword(value);
+            boolean sent = appUserService.forgotPassword(value);
 
-            var ok = Notification.show("Se o e-mail estiver cadastrado, você receberá uma senha provisória em instantes.", 5000, Notification.Position.BOTTOM_CENTER);
-            ok.addThemeNames("success");
+            if (sent) {
+                var ok = Notification.show("Você receberá uma nova senha em instantes.", 5000, Notification.Position.BOTTOM_CENTER);
+                ok.addThemeNames("success");
 
-            email.clear();
+                email.clear();
+            } else {
+                var notOk = Notification.show(" E-mail não cadastrado.", 5000, Notification.Position.MIDDLE);
+                notOk.addThemeNames("error");
+            }
         } catch (Exception ex) {
             var n = Notification.show("Erro ao processar solicitação: " + ex.getMessage(), 6000, Notification.Position.MIDDLE);
             n.addThemeNames("error");
@@ -106,7 +111,7 @@ public class ForgotPasswordView extends VerticalLayout {
 
     private void setLoading(boolean loading) {
         enviarBtn.setEnabled(!loading);
-        enviarBtn.setText(loading ? "Enviando..." : "Enviar instruções");
+        enviarBtn.setText(loading ? "Enviando..." : "Enviar senha");
     }
 
 }

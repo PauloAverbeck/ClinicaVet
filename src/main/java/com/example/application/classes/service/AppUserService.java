@@ -198,13 +198,13 @@ public class AppUserService {
     /* PASSWORD RESET FLOW */
 
     @Transactional
-    public void forgotPassword(String email) throws SQLException {
+    public boolean forgotPassword(String email) throws SQLException {
         if (email == null || email.isBlank()) {
-            return;
+            return false;
         }
         var userOpt = repo.findByEmail(normalizeEmail(email));
         if (userOpt.isEmpty()) {
-            return;
+            return false;
         }
         var user = userOpt.get();
 
@@ -213,6 +213,7 @@ public class AppUserService {
 
         repo.setProvisional(user.getId(), provisionalHash);
         resetMailer.sendProvisionalPassword(user.getEmail(), provisionalPlain, "forgot");
+        return true;
     }
 
     /* UTILITY */

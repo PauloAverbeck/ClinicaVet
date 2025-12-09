@@ -15,10 +15,10 @@
 - [x] Listagem de vínculos, criar/remover (soft-delete), checagem de permissões (is_admin);
 - [x] Guard no app para exigir vínculo ativo antes de acessar módulos da empresa.
 #
-- **Semana 3 - Pessoas e Animais**
-- [x] V2: tabelas person e animal;
+- **Semana 3 - Clients e Pets**
+- [x] V2: tabelas client e pet;
 - [ ] Repositórios JDBC e Services com validações (unicidade documento por empresa);
-- [x] Telas: PersonList/Form (com busca), AnimalList/Form (escolher tutor).
+- [x] Telas: ClientList/Form (com busca), PetList/Form (escolher tutor).
 #
 - **Semana 4 - Atendimentos**
 - [x] V3: tabela attendance;
@@ -49,10 +49,10 @@ Importante: Sempre usar hash (ex.: BCrypt) para ambos os campos; nunca armazenar
 * Unicidade user_id + company_id evita duplicidade de vínculo.
 ```
 
-- Pessoas/Animais
+- Clients/Pets
 ```
-* Pessoa sempre pertence a uma empresa. Todos os usuários vinculados àquela empresa têm acesso aos dados (conforme requisito).
-* Animal pertence a uma pessoa (tutor).
+* Cliente sempre pertence a uma empresa. Todos os usuários vinculados àquela empresa têm acesso aos dados (conforme requisito).
+* Pet pertence a um cliente (tutor).
 * Unicidade de documento dentro da empresa (índice parcial) para evitar duplicidade.
 ```
 
@@ -74,8 +74,8 @@ Importante: Sempre usar hash (ex.: BCrypt) para ambos os campos; nunca armazenar
 * Protegidas (exigem vínculo com uma empresa):
   4. CompanyListView / CompanyForm: CRUD de empresas (visível a admins globais ou via fluxo “criar empresa” e já vincular o criador como admin).
   5. UserCompanyView: listar vínculos da empresa; criar novo vínculo (admin); soft-delete de vínculo.
-  6. PersonListView / PersonForm: CRUD de pessoas da empresa; busca por nome/documento/telefone.
-  7. AnimalListView / AnimalForm: CRUD de animais vinculados ao tutor.
+  6. ClientListView / PersonForm: CRUD de pessoas da empresa; busca por nome/documento/telefone.
+  7. PetListView / AnimalForm: CRUD de animais vinculados ao tutor.
   8. AttendanceListView / AttendanceForm: criar agendamento (scheduled_at), realizar (appointment_at), descrição.
 ```
 ## Validações essenciais (service)
@@ -84,6 +84,6 @@ Importante: Sempre usar hash (ex.: BCrypt) para ambos os campos; nunca armazenar
 • Senha: sempre hash (BCrypt).
 • Documento: validar por doc_type (inicio simples, ex.: máscara/quantidade de dígitos).
 • Vínculo ativo: checar deleted_at IS NULL antes de permitir operações na empresa.
-• Pessoas: impedir duplicidade (company_id, doc_type, document).
+• Clients: impedir duplicidade (company_id, doc_type, document).
 • Atendimento: para “agendar”, exigir scheduled_at; para “realizar”, exigir appointment_at.
 ```

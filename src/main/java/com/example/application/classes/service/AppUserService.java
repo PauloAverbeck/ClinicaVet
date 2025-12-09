@@ -22,7 +22,10 @@ public class AppUserService {
     private final CurrentUserService currentUserService;
 
     @Autowired
-    public AppUserService(AppUserRepository repo, PasswordEncoder passwordEncoder, ResetMailer resetMailer, CurrentUserService currentUserService) {
+    public AppUserService(AppUserRepository repo,
+                          PasswordEncoder passwordEncoder,
+                          ResetMailer resetMailer,
+                          CurrentUserService currentUserService) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
         this.resetMailer = resetMailer;
@@ -30,29 +33,39 @@ public class AppUserService {
     }
 
     public enum LoginResult {
-        CONFIRMED,
+        CONFIRMED,  // poderia ser usado para distinguir, se quiser
         LOGGED_IN,
         INVALID
     }
 
+    /**
+     * Tenta realizar login ou confirmar cadastro caso exista senha provisória.
+     * - Se senha provisória confere: promove senha, marca email_conf_time e loga o usuário.
+     * - Se senha oficial confere: loga o usuário.
+     * - Caso contrário: retorna INVALID.
+     */
     @Transactional
     public LoginResult loginOrConfirm(String email, String plainPassword) throws SQLException {
         email = normalizeEmail(email);
         plainPassword = plainPassword == null ? null : plainPassword.trim();
 
         AppUser user = repo.findByEmail(email).orElse(null);
-        if (user == null) return LoginResult.INVALID;
-
-        // Senha provisória (primeiro login)
-        String prov = user.getProvisionalPasswordHash();
-        if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
-            // promove e já considera logado
-            boolean promoted = repo.promoteProvisionalToOfficial(user.getId());
-            return promoted ? LoginResult.LOGGED_IN : LoginResult.INVALID;
+        if (user == null || plainPassword == null || plainPassword.isBlank()) {
+            return LoginResult.INVALID;
         }
 
+        // 1) Senha provisória (primeiro login / confirmação)
+        String prov = user.getProvisionalPasswordHash();
+        if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
+            boolean promoted = repo.promoteProvisionalToOfficial(user.getId());
+            if (promoted) {
+                currentUserService.onLogin(user.getId(), user.getEmail());
+                return LoginResult.LOGGED_IN;
+            }
+            return LoginResult.INVALID;
+        }
 
-        // Login normal
+        // 2) Login normal
         String official = user.getPasswordHash();
         if (official != null && passwordEncoder.matches(plainPassword, official)) {
             currentUserService.onLogin(user.getId(), user.getEmail());
@@ -64,11 +77,6 @@ public class AppUserService {
 
     /* CREATE / READ / UPDATE / DELETE */
 
-    /**
-     * Cria um usuário.
-     * Observação: se passwordHash for null e houver provisória, o Repository
-     * garante NOT NULL gravando a provisória também em password_hash.
-     */
     @Transactional
     public long create(String name,
                        String email,
@@ -88,7 +96,6 @@ public class AppUserService {
         return repo.insertWithProvisional(user);
     }
 
-    /** Read */
     public Optional<AppUser> findById(long id) throws SQLException {
         return repo.findById(id);
     }
@@ -112,7 +119,7 @@ public class AppUserService {
         repo.updateDadosBasicos(user);
     }
 
-    /** Salva (insert ou update) */
+    /** Salva (insert ou update). */
     @Transactional
     public void save(AppUser user) throws SQLException {
         if (user.getId() == 0) {
@@ -129,16 +136,16 @@ public class AppUserService {
         repo.deleteById(id);
     }
 
-
     /* SIGNUP FLOW */
 
     /**
      * Autocadastro:
      * - Normaliza email
      * - Gera senha provisória e grava o hash com BCrypt em prov_pw_hash
-     * - Insere usuário com a provisória (password_hash pode ficar null; o repo cuidará do NOT NULL)
-     * - Retorna a senha provisória para que outra camada envie por e-mail/SMS.
+     * - Insere usuário com a provisória
+     * - Envia senha provisória por email.
      */
+    @Transactional
     public void requestSignup(String name, String email) throws SQLException {
         final String normalizedEmail = normalizeEmail(email);
 
@@ -164,12 +171,12 @@ public class AppUserService {
     /**
      * Confirmação do cadastro / primeiro login:
      * - Busca usuário por e-mail
-     * - Compara a senha provisória informada (após aplicar o mesmo hash)
+     * - Compara a senha provisória informada
      * - Se confere, promove provisória para oficial e marca email_conf_time
      *
      * Retorna true em caso de sucesso; false se a senha provisória não confere.
-     * Lança IllegalStateException se o usuário não existir ou não tiver provisória.
      */
+    @Transactional
     public boolean confirmSignup(String email, String provisionalPlainPassword) throws SQLException {
         AppUser user = repo.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
@@ -186,6 +193,9 @@ public class AppUserService {
         return true;
     }
 
+    /**
+     * Define uma nova senha oficial após a confirmação de cadastro.
+     */
     @Transactional
     public void setPasswordAfterConfirm(String email, String newPassword) throws SQLException {
         ensureStrongPassword(newPassword);
@@ -197,6 +207,11 @@ public class AppUserService {
 
     /* PASSWORD RESET FLOW */
 
+    /**
+     * Fluxo "Esqueci minha senha":
+     * - Se email existir, gera nova senha provisória, grava o hash e envia por email.
+     * - Retorna true se o email existia, false caso contrário.
+     */
     @Transactional
     public boolean forgotPassword(String email) throws SQLException {
         if (email == null || email.isBlank()) {
@@ -218,16 +233,6 @@ public class AppUserService {
 
     /* UTILITY */
 
-    /**
-     * Verifica se a senha é forte o suficiente.
-     * Critérios:
-     * - Não nula
-     * - Pelo menos 8 caracteres
-     * - Pelo menos 1 maiúscula, 1 minúscula e 1 dígito
-     * - Não apenas espaços em branco
-     *
-     * Lança IllegalArgumentException se a senha for fraca ou inválida.
-     */
     private static void ensureStrongPassword(String pwd) {
         if (pwd == null || pwd.isBlank()) throw new IllegalArgumentException("Senha inválida");
         boolean lenOK = pwd.length() >= 8;
@@ -252,6 +257,9 @@ public class AppUserService {
         return sb.toString();
     }
 
+    /**
+     * Login simples usando apenas a senha oficial.
+     */
     public boolean login(String email, String plainPassword) throws SQLException {
         AppUser u = repo.findByEmail(normalizeEmail(email))
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
@@ -260,4 +268,3 @@ public class AppUserService {
         return passwordEncoder.matches(plainPassword, hash);
     }
 }
-

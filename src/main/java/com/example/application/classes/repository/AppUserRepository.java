@@ -23,8 +23,11 @@ public class AppUserRepository {
     }
 
     /* CREATE */
-     /** Autocadastro: insere usuário com (opcional) senha provisória já hasheada. */
 
+    /**
+     * Autocadastro: insere usuário com (opcional) senha provisória já hasheada.
+     * Se password_hash vier null e prov_pw_hash não, usa a provisória também como oficial.
+     */
     public long insertWithProvisional(AppUser user) throws SQLException {
         final String sql = """
             INSERT INTO app_user (email, name, password_hash, prov_pw_hash, email_conf_time)
@@ -99,14 +102,14 @@ public class AppUserRepository {
 
     public List<CompanyUserRow> listCompanyUsers(long companyId) throws SQLException {
         final String sql = """
-            SELECT au.id AS user_id,
+            SELECT au.id   AS user_id,
                    au.name AS name,
                    au.email AS email,
                    uc.admin AS admin
               FROM user_company uc
               JOIN app_user au ON uc.user_id = au.id
              WHERE uc.company_id = ?
-                AND uc.deleted_at IS NULL
+               AND uc.deleted_at IS NULL
              ORDER BY au.name
             """;
         try (Connection con = dataSource.getConnection();
@@ -116,10 +119,10 @@ public class AppUserRepository {
                 List<CompanyUserRow> users = new ArrayList<>();
                 while (rs.next()) {
                     CompanyUserRow row = new CompanyUserRow(
-                        rs.getLong("user_id"),
-                        rs.getString("name"),
-                        rs.getString("email"),
-                        rs.getBoolean("admin")
+                            rs.getLong("user_id"),
+                            rs.getString("name"),
+                            rs.getString("email"),
+                            rs.getBoolean("admin")
                     );
                     users.add(row);
                 }
@@ -141,7 +144,8 @@ public class AppUserRepository {
         }
     }
 
-    /* UPDATE (basico) */
+    /* UPDATE (básico) */
+
     /**
      * Atualiza apenas dados não sensíveis (email, nome).
      * Não toca em senhas nem em email_conf_time.
@@ -176,13 +180,13 @@ public class AppUserRepository {
     }
 
     /* UPDATE (senhas e confirmação) */
-    /** Define uma nova senha provisória (esqueci minha senha). Zera a confirmação. */
+
+    /** Define uma nova senha provisória (esqueci minha senha). */
     public void setProvisional(long userId, String provisionalHash) throws SQLException {
         final String sql = """
             UPDATE app_user
                SET prov_pw_hash = ?,
-                   version = version + 1,
-                   update_date = CURRENT_TIMESTAMP
+                   version = version + 1
              WHERE id = ?
              RETURNING update_date, version
             """;
@@ -203,18 +207,18 @@ public class AppUserRepository {
     /**
      * Promove a senha provisória para oficial e confirma o email.
      * (Usado no primeiro login/fluxo de confirmação.)
+     * Retorna true se conseguiu promover (prov_pw_hash não era null).
      */
     public boolean promoteProvisionalToOfficial(long userId) throws SQLException {
         final String sql = """
-        UPDATE app_user
-           SET password_hash   = prov_pw_hash,
-               prov_pw_hash    = NULL,
-               email_conf_time = COALESCE(email_conf_time, CURRENT_TIMESTAMP),
-               update_date     = CURRENT_TIMESTAMP,
-               version         = version + 1
-         WHERE id = ?
-           AND prov_pw_hash IS NOT NULL
-    """;
+            UPDATE app_user
+               SET password_hash   = prov_pw_hash,
+                   prov_pw_hash    = NULL,
+                   email_conf_time = COALESCE(email_conf_time, CURRENT_TIMESTAMP),
+                   version         = version + 1
+             WHERE id = ?
+               AND prov_pw_hash IS NOT NULL
+            """;
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, userId);
@@ -227,8 +231,7 @@ public class AppUserRepository {
         final String sql = """
             UPDATE app_user
                SET password_hash = ?,
-                   version = version + 1,
-                   update_date = CURRENT_TIMESTAMP
+                   version = version + 1
              WHERE id = ? AND version = ?
              RETURNING update_date, version
             """;
@@ -247,16 +250,19 @@ public class AppUserRepository {
         }
     }
 
+    /**
+     * Define uma nova senha oficial e limpa a provisória, marcando confirmação do email.
+     * Usado após o fluxo de confirmação + definição de nova senha.
+     */
     public void updateOfficialPasswordAndClearProvisional(long userId, String newHash) throws SQLException {
         String sql = """
-        UPDATE app_user
-           SET password_hash = ?,
-               prov_pw_hash = NULL,
-               email_conf_time = CURRENT_TIMESTAMP,
-               update_date = CURRENT_TIMESTAMP,
-               version = version + 1
-         WHERE id = ?
-        """;
+            UPDATE app_user
+               SET password_hash   = ?,
+                   prov_pw_hash    = NULL,
+                   email_conf_time = CURRENT_TIMESTAMP,
+                   version         = version + 1
+             WHERE id = ?
+            """;
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newHash);
@@ -266,9 +272,10 @@ public class AppUserRepository {
     }
 
     /* SAVE & DELETE */
+
     /**
      * Salva um usuário (insert ou update) de forma unificada.
-     * Se o ID for nulo (0), insere; senão, atualiza dados básicos.
+     * Se o ID for 0, insere; senão, atualiza dados básicos.
      */
     public void save(AppUser user) throws SQLException {
         if (user.getId() == 0) {
@@ -278,10 +285,7 @@ public class AppUserRepository {
         }
     }
 
-    /**
-     * Remove permanentemente um usuário pelo ID.
-     * Hard delete.
-     */
+    /** Hard delete. */
     public void deleteById(long id) throws SQLException {
         final String sql = """
             DELETE FROM app_user
@@ -340,7 +344,9 @@ public class AppUserRepository {
         user.setProvisionalPasswordHash(provisionalPasswordHash);
 
         Timestamp emailConfirmationTimeTs = rs.getTimestamp("email_conf_time");
-        user.setEmailConfirmationTime(emailConfirmationTimeTs != null ? emailConfirmationTimeTs.toLocalDateTime() : null);
+        user.setEmailConfirmationTime(
+                emailConfirmationTimeTs != null ? emailConfirmationTimeTs.toLocalDateTime() : null
+        );
         return user;
     }
 }

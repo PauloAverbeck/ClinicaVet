@@ -61,7 +61,7 @@ public class PetService {
         }
 
         // Nascimento
-        if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(LocalDate.now().atStartOfDay())) {
+        if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(LocalDate.now())) {
             throw new PetValidationException("Data de nascimento não pode ser futura.");
         }
     }

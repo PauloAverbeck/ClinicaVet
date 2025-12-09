@@ -196,4 +196,8 @@ public class Client {
             default -> null;
         };
     }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }

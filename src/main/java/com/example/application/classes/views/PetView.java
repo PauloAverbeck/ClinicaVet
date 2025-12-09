@@ -163,7 +163,7 @@ public class PetView extends Main implements BeforeEnterObserver {
 
             LocalDate birth = birthDatePicker.getValue();
             if (birth != null) {
-                pet.setBirthDate(birth.atStartOfDay());
+                pet.setBirthDate(birth);
             } else {
                 pet.setBirthDate(null);
             }
@@ -238,7 +238,7 @@ public class PetView extends Main implements BeforeEnterObserver {
             breedField.setValue(pet.getBreed() != null ? pet.getBreed() : "");
 
             if (pet.getBirthDate() != null) {
-                birthDatePicker.setValue(pet.getBirthDate().toLocalDate());
+                birthDatePicker.setValue(pet.getBirthDate());
             } else {
                 birthDatePicker.clear();
             }

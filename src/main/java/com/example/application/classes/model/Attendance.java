@@ -8,6 +8,7 @@ public class Attendance {
     private int version;
     private LocalDateTime creationDate;
     private LocalDateTime updateDate;
+    private LocalDateTime scheduledAt;
 
     private long animalId;
     private Long createdByUserId;
@@ -44,6 +45,14 @@ public class Attendance {
 
     public void setUpdateDate(LocalDateTime updateDate) {
         this.updateDate = updateDate;
+    }
+
+    public LocalDateTime getScheduledAt() {
+        return scheduledAt;
+    }
+
+    public void setScheduledAt(LocalDateTime scheduledAt) {
+        this.scheduledAt = scheduledAt;
     }
 
     public long getAnimalId() {

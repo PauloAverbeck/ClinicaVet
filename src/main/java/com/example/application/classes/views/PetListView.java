@@ -82,7 +82,7 @@ public class PetListView extends Main {
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(p -> p.getBirthDate() != null ? p.getBirthDate().toLocalDate() : null)
+        grid.addColumn(p -> p.getBirthDate() != null ? p.getBirthDate() : null)
                 .setHeader("Data de Nascimento")
                 .setAutoWidth(true)
                 .setSortable(true);

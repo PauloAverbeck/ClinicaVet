@@ -9,6 +9,7 @@ public class Company {
     private int version;
     private LocalDateTime creationDate;
     private LocalDateTime updateDate;
+    private LocalDateTime deletedAt;
 
     private String name;
     private DocumentType documentType;
@@ -26,6 +27,9 @@ public class Company {
     public LocalDateTime getUpdateDate() { return updateDate; }
     public Company setUpdateDate(LocalDateTime updateDate) { this.updateDate = updateDate; return this; }
 
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public Company setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; return this; }
+
     public String getName() { return name; }
     public Company setName(String name) { this.name = name; return this; }
 
@@ -34,4 +38,8 @@ public class Company {
 
     public String getDocument() { return document; }
     public Company setDocument(String document) { this.document = document; return this; }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

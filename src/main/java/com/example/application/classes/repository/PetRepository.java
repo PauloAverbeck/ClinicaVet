@@ -231,7 +231,7 @@ public class PetRepository {
         pet.setSpecies(rs.getString("species"));
         pet.setBreed(rs.getString("breed"));
         Date birthDate = rs.getDate("birth_date");
-        pet.setBirthDate(birthDate != null ? birthDate.toLocalDate().atStartOfDay() : null);
+        pet.setBirthDate(birthDate != null ? birthDate.toLocalDate() : null);
         pet.setNotes(rs.getString("notes"));
         Timestamp deletedAt = rs.getTimestamp("deleted_at");
         pet.setDeletedAt(deletedAt != null ? deletedAt.toLocalDateTime() : null);

@@ -9,7 +9,7 @@ public class UserCompanyLink {
     private LocalDateTime updateDate;
     private long userId;
     private long companyId;
-    private long createdByUserId;
+    private Long createdByUserId;
     private boolean isAdmin;
     private LocalDateTime deletedAt;
 
@@ -62,11 +62,11 @@ public class UserCompanyLink {
         this.companyId = companyId;
     }
 
-    public long getCreatedByUserId() {
+    public Long getCreatedByUserId() {
         return createdByUserId;
     }
 
-    public void setCreatedByUserId(long createdByUserId) {
+    public void setCreatedByUserId(Long createdByUserId) {
         this.createdByUserId = createdByUserId;
     }
 
@@ -86,4 +86,7 @@ public class UserCompanyLink {
         this.deletedAt = deletedAt;
     }
 
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

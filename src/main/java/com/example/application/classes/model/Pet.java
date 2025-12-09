@@ -1,5 +1,6 @@
 package com.example.application.classes.model;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class Pet {
@@ -13,7 +14,7 @@ public class Pet {
     private String name;
     private String species;
     private String breed;
-    private LocalDateTime birthDate;
+    private LocalDate birthDate;
     private String notes;
     private LocalDateTime deletedAt;
 
@@ -98,11 +99,11 @@ public class Pet {
         this.breed = breed;
     }
 
-    public LocalDateTime getBirthDate() {
+    public LocalDate getBirthDate() {
         return birthDate;
     }
 
-    public void setBirthDate(LocalDateTime birthDate) {
+    public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
     }
 

@@ -28,6 +28,7 @@ public class SignUpView extends VerticalLayout {
     private final TextField nameField = new TextField("Nome");
     private final EmailField emailField = new EmailField("E-mail");
     private final Button createBtn = new Button("Criar conta");
+    private final Button voltarLoginBtn = new Button("Voltar para o login");
 
     public SignUpView(AppUserService appUserService) {
         this.appUserService = appUserService;
@@ -61,7 +62,10 @@ public class SignUpView extends VerticalLayout {
         createBtn.addClickShortcut(Key.ENTER);
         createBtn.addThemeNames("primary");
 
-        content.add(title, nameField, emailField, createBtn);
+        voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("home")));
+        voltarLoginBtn.addThemeNames("tertiary");
+
+        content.add(title, nameField, emailField, createBtn, voltarLoginBtn);
     }
 
     private void onCreate() {

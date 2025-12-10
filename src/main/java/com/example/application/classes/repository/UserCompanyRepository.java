@@ -21,54 +21,62 @@ public class UserCompanyRepository {
     /* CREATE */
 
     public long insertOrRestore(long createdByUserId, long userId, long companyId, boolean admin) throws SQLException {
-        // 1) se já existe ativo, não faz nada (idempotente)
         var existing = findActive(userId, companyId);
-        if (existing.isPresent()) return existing.get().getId();
+        if (existing.isPresent()) {
+            return existing.get().getId();
+        }
 
-        // 2) tenta restaurar se estava soft-deleted
         final String restoreSql = """
         UPDATE user_company
            SET deleted_at = NULL,
                admin = ?,
-               update_date = CURRENT_TIMESTAMP,
                version = version + 1
          WHERE user_id = ?
            AND company_id = ?
-        RETURNING id
+           AND deleted_at IS NOT NULL
+         RETURNING id
         """;
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(restoreSql)) {
+
             ps.setBoolean(1, admin);
             ps.setLong(2, userId);
             ps.setLong(3, companyId);
+
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getLong("id");
+                if (rs.next()) {
+                    return rs.getLong("id");
+                }
             }
         }
 
-        // 3) senão, insere
         final String insertSql = """
         INSERT INTO user_company (created_by_user_id, user_id, company_id, admin, deleted_at)
         VALUES (?, ?, ?, ?, NULL)
-        ON CONFLICT (user_id, company_id)
-        DO UPDATE SET
-            deleted_at      = NULL,
-            admin           = EXCLUDED.admin,
-            update_date     = now(),
-            version         = user_company.version + 1,
-            created_by_user_id = COALESCE(user_company.created_by_user_id, EXCLUDED.created_by_user_id)
         RETURNING id
         """;
+
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(insertSql)) {
+
             ps.setLong(1, createdByUserId);
             ps.setLong(2, userId);
             ps.setLong(3, companyId);
             ps.setBoolean(4, admin);
+
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getLong("id");
             }
+
+        } catch (SQLException ex) {
+            if ("23505".equals(ex.getSQLState())) {
+                var again = findActive(userId, companyId);
+                if (again.isPresent()) {
+                    return again.get().getId();
+                }
+            }
+            throw ex;
         }
     }
 

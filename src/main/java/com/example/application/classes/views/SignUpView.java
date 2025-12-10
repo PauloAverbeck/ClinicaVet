@@ -5,6 +5,7 @@ import com.example.application.base.ui.component.CenteredBody;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.service.AppUserService;
 import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
@@ -58,7 +59,6 @@ public class SignUpView extends VerticalLayout {
 
         createBtn.addClickListener(e -> onCreate());
         createBtn.addClickShortcut(Key.ENTER);
-        createBtn.setDisableOnClick(true);
         createBtn.addThemeNames("primary");
 
         content.add(title, nameField, emailField, createBtn);
@@ -87,6 +87,7 @@ public class SignUpView extends VerticalLayout {
             nameField.clear();
             emailField.clear();
             nameField.focus();
+            UI.getCurrent().navigate("home");
         } catch (IllegalStateException ex) {
             Notification.show(ex.getMessage(), 4000, Notification.Position.MIDDLE);
         } catch (Exception ex) {

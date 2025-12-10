@@ -64,7 +64,7 @@ public class CompanyListView extends Main {
         grid.setWidthFull();
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
 
-        grid.addColumn(c -> c.getId() == 0 ? "-" : Long.toString(c.getId()))
+        grid.addColumn(Company::getId)
                 .setHeader("ID")
                 .setAutoWidth(true)
                 .setSortable(true);
@@ -74,12 +74,12 @@ public class CompanyListView extends Main {
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(c -> c.getDocumentType() != null ? c.getDocumentType().name() : "-")
+        grid.addColumn(Company::getDocumentType)
                 .setHeader("Tipo Doc.")
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(c -> c.getDocument() != null ? c.getDocument() : "-")
+        grid.addColumn(Company::getDocument)
                 .setHeader("Documento")
                 .setAutoWidth(true)
                 .setSortable(true);

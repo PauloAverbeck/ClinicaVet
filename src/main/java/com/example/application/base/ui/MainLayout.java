@@ -1,5 +1,8 @@
 package com.example.application.base.ui;
 
+import com.example.application.classes.model.AppUser;
+import com.example.application.classes.service.AppUserService;
+import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
@@ -22,26 +25,72 @@ import static com.vaadin.flow.theme.lumo.LumoUtility.*;
 
 @Layout
 public final class MainLayout extends AppLayout implements AfterNavigationObserver {
+
     private final CurrentUserService currentUserService;
+    private final AppUserService appUserService;
+    private final CurrentCompanyService currentCompanyService;
 
     private final DrawerToggle toggle;
     private final Div drawerHeader;
     private final Scroller drawerScroller;
     private final SideNav nav;
+    private final Div centerInfo;
+    private final Button logoutBtn;
 
-    public MainLayout(CurrentUserService currentUserService) {
+    public MainLayout(CurrentUserService currentUserService,
+                      AppUserService appUserService,
+                      CurrentCompanyService currentCompanyService) {
         this.currentUserService = currentUserService;
+        this.appUserService = appUserService;
+        this.currentCompanyService = currentCompanyService;
 
         setPrimarySection(Section.DRAWER);
         UI.getCurrent().getElement().getThemeList().add(Lumo.DARK);
 
+        // --- HEADER / NAVBAR ---
+
         toggle = new DrawerToggle();
-        addToNavbar(true, toggle);
 
         Button homeBtn = new Button(new Icon(VaadinIcon.HOME));
         homeBtn.addThemeNames("tertiary-inline");
         homeBtn.addClickListener(e -> UI.getCurrent().navigate("home"));
-        addToNavbar(homeBtn);
+
+        logoutBtn = new Button(new Icon(VaadinIcon.SIGN_OUT));
+        logoutBtn.addThemeNames("error", "tertiary-inline");
+        logoutBtn.getElement().setProperty("title", "Sair");
+        logoutBtn.getStyle().set("margin-left", "auto");
+        logoutBtn.addClickListener(e -> {
+            currentUserService.logout();
+            currentCompanyService.clearSelection();
+            setDrawerOpened(false);
+            UI.getCurrent().navigate("home");
+        });
+
+        // container da esquerda (toggle + home)
+        Div leftBox = new Div(toggle, homeBtn);
+        leftBox.addClassNames(Display.FLEX, AlignItems.CENTER, Gap.SMALL);
+
+        // container da direita (logout)
+        Div rightBox = new Div(logoutBtn);
+        rightBox.addClassNames(Display.FLEX, AlignItems.CENTER, Gap.SMALL);
+
+        // label central com info de usuário/empresa
+        centerInfo = new Div();
+        centerInfo.addClassNames(TextColor.SECONDARY, FontSize.SMALL);
+        centerInfo.getStyle().set("position", "absolute");
+        centerInfo.getStyle().set("left", "50%");
+        centerInfo.getStyle().set("transform", "translateX(-50%)");
+
+        // top bar que vai na navbar
+        Div topBar = new Div();
+        topBar.addClassNames(Display.FLEX, AlignItems.CENTER, Width.FULL, Padding.Horizontal.MEDIUM);
+        topBar.getStyle().set("position", "relative");
+        topBar.add(leftBox, centerInfo);
+
+        addToNavbar(true, topBar);
+        addToNavbar(rightBox);
+
+        // --- DRAWER ---
 
         drawerHeader = createDrawerHeader();
         nav = createSideNav();
@@ -67,10 +116,6 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
     private SideNav createSideNav() {
         SideNav nav = new SideNav();
         nav.addClassNames(Margin.Horizontal.MEDIUM);
-
-        /*for (MenuEntry entry : MenuConfiguration.getMenuEntries()) {
-            nav.addItem(createSideNavItem(entry));
-        }*/
 
         SideNavItem home = new SideNavItem("Início");
         home.setPrefixComponent(VaadinIcon.HOME.create());
@@ -114,12 +159,47 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
         updateForLoginState();
     }
 
-    /** Esconde/mostra navbar + drawer conforme esteja logado ou não. */
+    /** Esconde/mostra navbar + drawer e info central conforme esteja logado ou não. */
     private void updateForLoginState() {
         boolean loggedIn = currentUserService.isLoggedIn();
 
         toggle.setVisible(loggedIn);
         drawerHeader.setVisible(loggedIn);
         drawerScroller.setVisible(loggedIn);
+        logoutBtn.setVisible(loggedIn);
+
+        if (loggedIn) {
+            centerInfo.getElement().setProperty("innerHTML", buildCenterInfoText());
+            centerInfo.setVisible(true);
+            setDrawerOpened(true);
+        } else {
+            centerInfo.getElement().setProperty("innerHTML", "");
+            centerInfo.setVisible(false);
+        }
+    }
+
+    private String buildCenterInfoText() {
+        try {
+            if (!currentUserService.isLoggedIn()) {
+                return "";
+            }
+
+            long userId = currentUserService.requireUserId();
+            var userOpt = appUserService.findById(userId);
+            if (userOpt.isEmpty()) {
+                return "";
+            }
+            AppUser u = userOpt.get();
+
+            String userPart = u.getName() + " (" + u.getEmail() + ")";
+            String companyName = currentCompanyService.activeCompanyNameOrNull();
+
+            if (companyName == null || companyName.isBlank()) {
+                return "Usuário: " + userPart;
+            }
+            return "Usuário: " + userPart + " <br>Empresa: " + companyName;
+        } catch (Exception e) {
+            return "";
+        }
     }
 }

@@ -106,7 +106,7 @@ public class ClientRepository {
 
     public List<Client> listByCompany(long companyId) throws SQLException {
         final String sql = baseSelect() +
-                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY name";
+                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY id";
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {

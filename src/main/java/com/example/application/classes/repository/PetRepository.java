@@ -94,7 +94,7 @@ public class PetRepository {
 
     public List<Pet> listByCompany(long companyId) throws SQLException {
         final String sql = baseSelect() +
-                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY name, id";
+                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY id";
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {

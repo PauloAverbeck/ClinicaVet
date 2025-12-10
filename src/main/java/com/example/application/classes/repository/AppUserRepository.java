@@ -110,7 +110,7 @@ public class AppUserRepository {
               JOIN app_user au ON uc.user_id = au.id
              WHERE uc.company_id = ?
                AND uc.deleted_at IS NULL
-             ORDER BY au.name
+             ORDER BY au.id
             """;
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -132,7 +132,7 @@ public class AppUserRepository {
     }
 
     public List<AppUser> listAll() throws SQLException {
-        final String sql = baseSelect() + " ORDER BY name";
+        final String sql = baseSelect() + " ORDER BY id";
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

@@ -98,7 +98,7 @@ public class CompanyRepository {
     }
 
     public List<Company> listAll() throws SQLException {
-        final String sql = baseSelect() + " WHERE deleted_at IS NULL ORDER BY name";
+        final String sql = baseSelect() + " WHERE deleted_at IS NULL ORDER BY id";
         try (Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(sql);
             ResultSet rs = ps.executeQuery()) {

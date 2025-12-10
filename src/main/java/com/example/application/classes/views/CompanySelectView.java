@@ -56,7 +56,7 @@ public class CompanySelectView extends VerticalLayout {
 
         var content = body.wrapper();
 
-        H1 title = new H1("Escolha com qual empresa você deseja trabalhar");
+        H1 title = new H1("Escolha sua empresa");
 
         grid.addColumn(c -> c.name).setHeader("Nome").setAutoWidth(true).setFlexGrow(1);
         grid.addColumn(c -> c.admin ? "Sim" : "Não").setHeader("Admin").setAutoWidth(true);

@@ -22,41 +22,38 @@ public class CompanyService {
 
     /* CREATE */
     @Transactional
-    public long create(String name, DocumentType documentType, String document) throws SQLException {
+    public Company create(String name, DocumentType type, String document) throws SQLException {
         name = normalizeName(name);
-        document = normalizeDocument(documentType, document);
-        validateCompanyInput(name, documentType, document);
+        document = normalizeDocument(type, document);
+        validateCompanyInput(name, type, document);
 
-        if (companyRepository.existsByDocument(documentType, document)) {
-            throw new IllegalStateException("Documento já cadastrado");
+        if (companyRepository.existsByDocument(type, document)) {
+            throw new IllegalStateException("Documento já cadastrado.");
         }
 
         Company company = new Company()
                 .setName(name)
-                .setDocumentType(documentType)
+                .setDocumentType(type)
                 .setDocument(document);
 
-        return companyRepository.insert(company);
+        long id = companyRepository.insert(company);
+        company.setId(id);
+
+        return company;
     }
 
     @Transactional
     public long createForUser(long userId, String name, DocumentType type, String document) throws SQLException {
-        Company company = new Company();
-        company.setName(name);
-        company.setDocumentType(type);
-        company.setDocument(document);
+        Company company = create(name, type, document);
 
-        long id = companyRepository.insert(company);
-
-        boolean isFirstCompany = userCompanyService.linksOfUser(userId).isEmpty();
-
-        if (isFirstCompany) {
-            userCompanyService.linkAsAdmin(userId, userId, id);
+        boolean isFirst = userCompanyService.linksOfUser(userId).isEmpty();
+        if (isFirst) {
+            userCompanyService.linkAsAdmin(userId, userId, company.getId());
         } else {
-            userCompanyService.linkMember(userId, userId, id);
+            userCompanyService.linkMember(userId, userId, company.getId());
         }
 
-        return id;
+        return company.getId();
     }
 
     /* READ */

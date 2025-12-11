@@ -18,7 +18,6 @@ import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.server.menu.MenuEntry;
 import com.vaadin.flow.theme.lumo.Lumo;
 
 import static com.vaadin.flow.theme.lumo.LumoUtility.*;
@@ -141,17 +140,12 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
         registration.addItem(
                 new SideNavItem("Usuários", "users", VaadinIcon.USER.create()),
                 new SideNavItem("Clientes", "clients", VaadinIcon.USER_HEART.create()),
-                new SideNavItem("Pets", "pets", VaadinIcon.PIGGY_BANK.create())
+                new SideNavItem("Pets", "pets", VaadinIcon.PIGGY_BANK.create()),
+                new SideNavItem("Agenda", "agenda", VaadinIcon.CALENDAR.create())
         );
         nav.addItem(registration);
 
         return nav;
-    }
-
-    private SideNavItem createSideNavItem(MenuEntry entry) {
-        return entry.icon() != null
-                ? new SideNavItem(entry.title(), entry.path(), new Icon(entry.icon()))
-                : new SideNavItem(entry.title(), entry.path());
     }
 
     @Override

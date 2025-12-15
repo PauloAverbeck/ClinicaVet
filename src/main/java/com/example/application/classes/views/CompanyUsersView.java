@@ -138,26 +138,25 @@ public class CompanyUsersView extends Main  {
         }
     }
 
-    // TODO Remover quando implementar controle de acesso “de verdade”
     @Override
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
-        try {
-            ViewGuard.requireLogin(currentUserService, () -> {
-                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-                UI.getCurrent().navigate("home");
-            });
 
-            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+        ViewGuard.requireLogin(currentUserService, () -> {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("home");
+        });
 
-            reloadGrid();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar usuários da empresa: " + ex.getMessage(),
-                            6000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
+        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("company/select");
-        }
+        });
+
+        ViewGuard.requireAdmin(currentUserService, currentCompanyService, userCompanyService, () -> {
+            Notification.show("Acesso negado. Apenas administradores podem acessar esta página.",
+                    4000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("home");
+        });
     }
 
     private void openAddUserDialog() {

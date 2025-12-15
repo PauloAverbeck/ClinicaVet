@@ -97,6 +97,8 @@ public class SignUpView extends VerticalLayout {
         } catch (Exception ex) {
             ex.printStackTrace();
             Notification.show("Falha ao criar conta. Tente novamente.", 4000, Notification.Position.MIDDLE);
+        } finally {
+            createBtn.setEnabled(true);
         }
     }
 

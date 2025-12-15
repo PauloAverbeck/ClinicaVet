@@ -24,7 +24,6 @@ import java.util.List;
 @PageTitle("Pets")
 @Route(value = "pets", layout = MainLayout.class)
 @Menu(title = "Pets", icon = "la la-paw", order = 10)
-//TODO: usar @RolesAllowed quando implementar controle de acesso
 public class PetListView extends Main {
 
     private final PetService petService;
@@ -135,18 +134,17 @@ public class PetListView extends Main {
                         .addThemeNames("error");
                 UI.getCurrent().navigate("home");
             });
+            ViewGuard.requireCompanySelected(currentCompanyService, () -> {;
+                Notification.show("Selecione uma empresa para ver os pets.", 3000, Notification.Position.MIDDLE)
+                        .addThemeNames("warning");
+                UI.getCurrent().navigate("company/select");
+            });
 
             currentCompanyService.activeCompanyIdOrThrow();
             reloadGrid();
-
-        } catch (IllegalStateException ex) {
-            ex.printStackTrace();
-            Notification.show("Selecione uma empresa para ver os pets.", 4000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("company/select");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar pets: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+        } catch (Exception e) {
+            Notification.show("Erro ao carregar lista de pets: " + e.getMessage(),
+                            5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             UI.getCurrent().navigate("home");
         }

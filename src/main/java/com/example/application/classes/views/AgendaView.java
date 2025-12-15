@@ -125,5 +125,9 @@ public class AgendaView extends Main {
             Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("home");
         });
+        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("company/select");
+        });
     }
 }

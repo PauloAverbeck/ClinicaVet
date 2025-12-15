@@ -29,7 +29,6 @@ import java.util.Optional;
 
 @PageTitle("Atendimentos")
 @Route(value = "pets/:id/attendances", layout = MainLayout.class)
-//TODO: usar @RolesAllowed quando implementar controle de acesso
 public class AttendanceListView extends Main implements BeforeEnterObserver {
 
     private final PetService petService;
@@ -143,12 +142,16 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
     }
 
     @Override
-    protected void onAttach(AttachEvent attachEvent) {
-        super.onAttach(attachEvent);
-
-        if (petId != null) {
-            reloadGrid();
-        }
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        ViewGuard.requireLogin(currentUserService, () -> {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("home");
+        });
+        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("company/select");
+        });
     }
 
     private void reloadGrid() {

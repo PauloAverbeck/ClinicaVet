@@ -28,7 +28,6 @@ import java.util.Objects;
 @PageTitle("Empresas")
 @Route(value = "companies", layout = MainLayout.class)
 @Menu(title = "Empresas", icon = "la la-building", order = 4)
-// TODO: usar @RolesAllowed quando implementar controle de acesso
 public class CompanyListView extends Main {
 
     private final CompanyService companyService;
@@ -250,7 +249,6 @@ public class CompanyListView extends Main {
         confirm.open();
     }
 
-    // TODO Remover quando implementar controle de acesso “de verdade”
     @Override
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);

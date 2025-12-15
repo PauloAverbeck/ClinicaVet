@@ -88,7 +88,6 @@ public class CompanySelectView extends VerticalLayout {
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
         try {
-            //TODO remover quando implementar controle de acesso
             ViewGuard.requireLogin(currentUserService, () -> {
                 Notification.show("Faça login para continuar.", 2500, Notification.Position.MIDDLE);
                 UI.getCurrent().navigate("home");

@@ -4,10 +4,7 @@ import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.AppUser;
 import com.example.application.classes.model.Company;
-import com.example.application.classes.service.AppUserService;
-import com.example.application.classes.service.CompanyService;
-import com.example.application.classes.service.CurrentUserService;
-import com.example.application.classes.service.UserCompanyService;
+import com.example.application.classes.service.*;
 import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Text;
@@ -35,13 +32,13 @@ import java.util.stream.Collectors;
 @PageTitle("Usuários")
 @Route(value = "users", layout = MainLayout.class)
 @Menu(title = "Usuários", icon = "la la-users", order = 5)
-//TODO Usar @RolesAllowed quando implementar controle de acesso
 public class AppUserView extends Main {
 
     private final AppUserService userService;
     private final UserCompanyService userCompanyService;
     private final CurrentUserService currentUserService;
     private final CompanyService companyService;
+    private final CurrentCompanyService currentCompanyService;
 
     private final Grid<AppUser> grid;
 
@@ -51,11 +48,12 @@ public class AppUserView extends Main {
     public AppUserView(final AppUserService userService,
                        final UserCompanyService userCompanyService,
                        final CurrentUserService currentUserService,
-                       final CompanyService companyService) {
+                       final CompanyService companyService, CurrentCompanyService currentCompanyService) {
         this.userService = Objects.requireNonNull(userService);
         this.userCompanyService = Objects.requireNonNull(userCompanyService);
         this.currentUserService = Objects.requireNonNull(currentUserService);
         this.companyService = Objects.requireNonNull(companyService);
+        this.currentCompanyService = currentCompanyService;
 
         var header = new ViewToolbar("Usuários");
         add(header);
@@ -258,13 +256,16 @@ public class AppUserView extends Main {
         }
     }
 
-    //TODO Remover quando implementar controle de acesso “de verdade”
     @Override
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
         ViewGuard.requireLogin(currentUserService, () -> {
             Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("home");
+        });
+        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("company/select");
         });
     }
 

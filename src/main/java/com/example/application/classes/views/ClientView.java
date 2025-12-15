@@ -256,27 +256,16 @@ public class ClientView extends Main implements BeforeEnterObserver {
     }
 
     @Override
-    protected void onAttach(AttachEvent attachEvent) {
-        super.onAttach(attachEvent);
-        try {
-            ViewGuard.requireLogin(currentUserService, () -> {
-                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-                UI.getCurrent().navigate("home");
-            });
-
-            currentCompanyService.activeCompanyIdOrThrow();
-
-        } catch (IllegalStateException ex) {
-            ex.printStackTrace();
-            Notification.show("Selecione uma empresa para ver os clientes.", 4000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("company/select");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar clientes: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        ViewGuard.requireLogin(currentUserService, () -> {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("home");
-        }
+        });
+        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            UI.getCurrent().navigate("company/select");
+        });
     }
 
     @Override

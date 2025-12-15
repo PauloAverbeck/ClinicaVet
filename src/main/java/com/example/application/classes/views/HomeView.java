@@ -6,14 +6,12 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.service.AppUserService;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
-import com.example.application.classes.service.UserCompanyService;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Hr;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -34,21 +32,17 @@ public class HomeView extends VerticalLayout {
     private final AppUserService appUserService;
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
-    private final UserCompanyService userCompanyService;
 
     private final EmailField email = new EmailField("E-mail");
     private final PasswordField password = new PasswordField("Senha");
     private final Button loginBtn = new Button("Entrar");
-    private final Button exitBtn = new Button("Sair");
 
     public HomeView(AppUserService appUserService,
                     CurrentUserService currentUserService,
-                    CurrentCompanyService currentCompanyService,
-                    UserCompanyService userCompanyService) {
+                    CurrentCompanyService currentCompanyService) {
         this.appUserService = appUserService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
-        this.userCompanyService = userCompanyService;
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
@@ -75,10 +69,6 @@ public class HomeView extends VerticalLayout {
         loginBtn.addClickShortcut(Key.ENTER);
         loginBtn.addClickListener(e -> onLogin());
 
-        exitBtn.addThemeNames("error", "tertiary");
-        exitBtn.addClickListener(e -> onLogout());
-        exitBtn.setVisible(false);
-
         var signUp = new Anchor("signup", "Criar conta");
         signUp.getElement().setProperty("title", "Ir para cadastro");
         var forgot = new Anchor("forgot", "Esqueci minha senha");
@@ -86,19 +76,12 @@ public class HomeView extends VerticalLayout {
 
         content.add(
                 title,
-                email, password, loginBtn, exitBtn,
+                email, password, loginBtn,
                 new Hr(),
                 signUp,
                 forgot
         );
         updateUIState();
-
-        // Se já está logado e já tem empresa ativa, mostrar info resumida aqui
-        if (currentUserService.isLoggedIn() && currentCompanyService.hasSelection()) {
-            var info = new Paragraph("Usuário logado: " + userDisplay()
-                    + " • Empresa atual: " + currentCompanyService.activeCompanyNameOrNull());
-            content.add(new Hr(), info);
-        }
     }
 
     private void updateUIState() {
@@ -106,7 +89,6 @@ public class HomeView extends VerticalLayout {
         email.setEnabled(!loggedIn);
         password.setEnabled(!loggedIn);
         loginBtn.setVisible(!loggedIn);
-        exitBtn.setVisible(loggedIn);
     }
 
     private void onLogin() {
@@ -123,11 +105,6 @@ public class HomeView extends VerticalLayout {
         try {
             var res = appUserService.loginOrConfirm(e, p);
             switch (res) {
-                case CONFIRMED -> {
-                    Notification.show("Senha provisória promovida. Faça login novamente.", 3000, Notification.Position.MIDDLE);
-                    password.clear();
-                    password.focus();
-                }
                 case LOGGED_IN -> {
                     // “Loga” na sessão
                     var user = appUserService.findByEmail(e).orElseThrow();
@@ -146,14 +123,6 @@ public class HomeView extends VerticalLayout {
             Notification.show("Falha ao autenticar.", 3500, Notification.Position.MIDDLE);
         }
         updateUIState();
-    }
-
-    private void onLogout() {
-        currentUserService.logout();
-        currentCompanyService.clearSelection();
-        Notification.show("Sessão encerrada.", 2500, Notification.Position.MIDDLE);
-        UI.getCurrent().navigate("home");
-        UI.getCurrent().getPage().reload();
     }
 
     private String userDisplay() {

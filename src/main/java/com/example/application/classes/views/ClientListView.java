@@ -24,7 +24,6 @@ import java.util.List;
 @PageTitle("Clientes")
 @Route(value = "clients", layout = MainLayout.class)
 @Menu(title = "Clientes", icon = "la la-users", order = 8)
-// TODO: usar @RolesAllowed quando implementar controle de acesso
 public class ClientListView extends Main  {
 
     private final ClientService clientService;
@@ -126,18 +125,15 @@ public class ClientListView extends Main  {
                 Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
                 UI.getCurrent().navigate("home");
             });
+            ViewGuard.requireCompanySelected(currentCompanyService, () -> {;
+                Notification.show("Selecione uma empresa para ver os clientes.", 4000, Notification.Position.MIDDLE);
+                UI.getCurrent().navigate("company/select");
+            });
 
             currentCompanyService.activeCompanyIdOrThrow();
-
             reloadGrid();
-        } catch (IllegalStateException ex) {
-            ex.printStackTrace();
-            Notification.show("Selecione uma empresa para ver os clientes.", 4000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("company/select");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar clientes: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+        } catch (Exception e) {
+            Notification.show("Erro ao carregar clientes: " + e.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             UI.getCurrent().navigate("home");
         }

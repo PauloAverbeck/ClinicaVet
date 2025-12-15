@@ -120,23 +120,20 @@ public class PetView extends Main implements BeforeEnterObserver {
                         .addThemeNames("error");
                 UI.getCurrent().navigate("home");
             });
+            ViewGuard.requireCompanySelected(currentCompanyService, () -> {
+                Notification.show("Selecione uma empresa para continuar.", 4000, Position.MIDDLE)
+                        .addThemeNames("error");
+                UI.getCurrent().navigate("company/select");
+            });
 
             currentCompanyService.activeCompanyIdOrThrow();
-
             loadClients();
 
             if (petId != null) {
                 loadExistingPet(petId);
             }
-
-        } catch (IllegalStateException ex) { // empresa não selecionada
-            ex.printStackTrace();
-            Notification.show("Selecione uma empresa para continuar.", 4000, Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("company/select");
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar tela de pet: " + ex.getMessage(), 5000, Position.MIDDLE)
+        } catch (Exception e) {
+            Notification.show("Erro ao carregar dados: " + e.getMessage(), 5000, Position.MIDDLE)
                     .addThemeNames("error");
             UI.getCurrent().navigate("home");
         }

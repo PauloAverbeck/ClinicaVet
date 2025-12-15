@@ -50,22 +50,17 @@ public class AppUserService {
         plainPassword = plainPassword == null ? null : plainPassword.trim();
 
         AppUser user = repo.findByEmail(email).orElse(null);
-        if (user == null || plainPassword == null || plainPassword.isBlank()) {
-            return LoginResult.INVALID;
-        }
+        if (user == null) return LoginResult.INVALID;
 
-        // 1) Senha provisória (primeiro login / confirmação)
         String prov = user.getProvisionalPasswordHash();
         if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
             boolean promoted = repo.promoteProvisionalToOfficial(user.getId());
-            if (promoted) {
-                currentUserService.onLogin(user.getId(), user.getEmail());
-                return LoginResult.LOGGED_IN;
-            }
-            return LoginResult.INVALID;
+            if (!promoted) return LoginResult.INVALID;
+
+            currentUserService.onLogin(user.getId(), user.getEmail());
+            return LoginResult.LOGGED_IN;
         }
 
-        // 2) Login normal
         String official = user.getPasswordHash();
         if (official != null && passwordEncoder.matches(plainPassword, official)) {
             currentUserService.onLogin(user.getId(), user.getEmail());

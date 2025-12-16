@@ -17,6 +17,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
+import java.util.Objects;
+
 @PageTitle("Criar conta")
 @Route(value = "signup", layout = MainLayout.class)
 @Menu(title = "Criar conta", icon = "la la-user-plus", order = 2)
@@ -31,15 +33,14 @@ public class SignUpView extends VerticalLayout {
     private final Button voltarLoginBtn = new Button("Voltar para o login");
 
     public SignUpView(AppUserService appUserService) {
-        this.appUserService = appUserService;
+        this.appUserService = Objects.requireNonNull(appUserService);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Criar conta");
-        add(header);
+        add(new ViewToolbar("Criar conta"));
 
         var body = new CenteredBody();
         add(body);
@@ -54,22 +55,26 @@ public class SignUpView extends VerticalLayout {
         nameField.setRequiredIndicatorVisible(true);
 
         emailField.setClearButtonVisible(true);
-        emailField.setErrorMessage("Informe um e-mail válido");
         emailField.setPlaceholder("voce@exemplo.com");
         emailField.setRequiredIndicatorVisible(true);
+        emailField.setErrorMessage("Informe um e-mail válido");
 
-        createBtn.addClickListener(e -> onCreate());
-        createBtn.addClickShortcut(Key.ENTER);
+        emailField.addValueChangeListener(e -> {
+            if (emailField.isInvalid()) emailField.setInvalid(false);
+        });
+
         createBtn.addThemeNames("primary");
+        createBtn.addClickShortcut(Key.ENTER);
+        createBtn.addClickListener(e -> onCreate());
 
-        voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("home")));
         voltarLoginBtn.addThemeNames("tertiary");
+        voltarLoginBtn.addClickListener(e -> UI.getCurrent().navigate("home"));
 
         content.add(title, nameField, emailField, createBtn, voltarLoginBtn);
     }
 
     private void onCreate() {
-        String name  = trimOrNull(nameField.getValue());
+        String name = trimOrNull(nameField.getValue());
         String email = trimOrNull(emailField.getValue());
 
         if (name == null || name.isBlank()) {
@@ -77,29 +82,45 @@ public class SignUpView extends VerticalLayout {
             nameField.focus();
             return;
         }
+
         if (email == null || email.isBlank() || emailField.isInvalid()) {
+            emailField.setInvalid(true);
             Notification.show("Informe um e-mail válido.", 3000, Notification.Position.MIDDLE);
             emailField.focus();
             return;
         }
 
+        setLoading(true);
         try {
             appUserService.requestSignup(name, email);
 
-            Notification.show("Cadastro recebido! Enviamos uma senha provisória para seu e-mail.",4500, Notification.Position.MIDDLE);
+            Notification.show(
+                    "Cadastro recebido! Enviamos uma senha provisória para seu e-mail.",
+                    4500,
+                    Notification.Position.MIDDLE
+            ).addThemeNames("success");
 
             nameField.clear();
             emailField.clear();
             nameField.focus();
+
             UI.getCurrent().navigate("home");
         } catch (IllegalStateException ex) {
-            Notification.show(ex.getMessage(), 4000, Notification.Position.MIDDLE);
+            Notification.show(ex.getMessage(), 4000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
         } catch (Exception ex) {
             ex.printStackTrace();
-            Notification.show("Falha ao criar conta. Tente novamente.", 4000, Notification.Position.MIDDLE);
+            Notification.show("Falha ao criar conta. Tente novamente.", 4000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
         } finally {
-            createBtn.setEnabled(true);
+            setLoading(false);
         }
+    }
+
+    private void setLoading(boolean loading) {
+        createBtn.setEnabled(!loading);
+        createBtn.setText(loading ? "Criando..." : "Criar conta");
+        voltarLoginBtn.setEnabled(!loading);
     }
 
     private static String trimOrNull(String v) {

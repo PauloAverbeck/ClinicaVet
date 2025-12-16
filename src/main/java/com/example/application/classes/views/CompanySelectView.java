@@ -6,7 +6,6 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.service.CompanyChoice;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
-import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -17,9 +16,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -27,7 +24,7 @@ import java.util.List;
 @PageTitle("Selecionar Empresa")
 @Route(value = "company/select", layout = MainLayout.class)
 @Menu(title = "Selecionar Empresa", icon = "la la-building", order = 2)
-public class CompanySelectView extends VerticalLayout {
+public class CompanySelectView extends VerticalLayout implements BeforeEnterObserver {
 
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
@@ -47,8 +44,7 @@ public class CompanySelectView extends VerticalLayout {
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Selecionar Empresa");
-        add(header);
+        add(new ViewToolbar("Selecionar Empresa"));
 
         var body = new CenteredBody();
         add(body);
@@ -67,12 +63,16 @@ public class CompanySelectView extends VerticalLayout {
         confirmBtn.setEnabled(false);
         confirmBtn.addClickListener(e -> onConfirm());
 
-        grid.asSingleSelect().addValueChangeListener(e -> {
-            confirmBtn.setEnabled(e.getValue() != null);
-        });
+        grid.asSingleSelect().addValueChangeListener(e ->
+                confirmBtn.setEnabled(e.getValue() != null)
+        );
 
         refreshBtn.addClickListener(e -> {
-            try { loadData(); } catch (Exception ex) { showError(ex); }
+            try {
+                loadData();
+            } catch (Exception ex) {
+                showError(ex);
+            }
         });
 
         createBtn.addThemeNames("success", "tertiary");
@@ -81,23 +81,37 @@ public class CompanySelectView extends VerticalLayout {
         HorizontalLayout actions = new HorizontalLayout(confirmBtn, refreshBtn, createBtn);
         actions.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.BASELINE);
 
-        content.add(title, new Paragraph("Selecione uma empresa e clique em “Usar esta empresa”."), grid, actions);
+        content.add(
+                title,
+                new Paragraph("Selecione uma empresa e clique em “Usar empresa”."),
+                grid,
+                actions
+        );
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 2500, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+        }
     }
 
     @Override
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
+        if (!currentUserService.isLoggedIn()) {
+            return;
+        }
+
         try {
-            ViewGuard.requireLogin(currentUserService, () -> {
-                Notification.show("Faça login para continuar.", 2500, Notification.Position.MIDDLE);
-                UI.getCurrent().navigate("home");
-            });
             long uid = currentUserService.requireUserId();
             if (currentCompanyService.ensureAutoSelectionIfSingle(uid)) {
                 Notification.show("Empresa selecionada automaticamente.", 1500, Notification.Position.MIDDLE);
                 UI.getCurrent().navigate("home");
                 return;
             }
+
             loadData();
         } catch (Exception ex) {
             showError(ex);
@@ -106,23 +120,29 @@ public class CompanySelectView extends VerticalLayout {
 
     private void loadData() throws SQLException {
         grid.setItems(List.of());
+
         long uid = currentUserService.requireUserId();
         List<CompanyChoice> items = currentCompanyService.listSelectableChoicesForUser(uid);
         grid.setItems(items);
 
-        boolean empty = items.isEmpty();
         if (items.isEmpty()) {
-            Notification.show("Você ainda não possui empresas. Crie uma para continuar.", 3000, Notification.Position.BOTTOM_CENTER);
+            Notification.show(
+                    "Você ainda não possui empresas. Crie uma para continuar.",
+                    3000,
+                    Notification.Position.BOTTOM_CENTER
+            );
+            confirmBtn.setEnabled(false);
             createBtn.focus();
             return;
         }
+
         if (items.size() == 1) {
             grid.select(items.getFirst());
         } else {
             grid.focus();
         }
 
-        confirmBtn.setEnabled(!empty && grid.asSingleSelect().getValue() != null);
+        confirmBtn.setEnabled(grid.asSingleSelect().getValue() != null);
     }
 
     private void onConfirm() {
@@ -131,9 +151,11 @@ public class CompanySelectView extends VerticalLayout {
             Notification.show("Selecione uma empresa.", 2500, Notification.Position.MIDDLE);
             return;
         }
+
         try {
             long uid = currentUserService.requireUserId();
             currentCompanyService.selectCompanyForUser(uid, selected.id);
+
             Notification.show("Empresa selecionada: " + selected.name, 2500, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("users");
         } catch (Exception ex) {
@@ -143,6 +165,7 @@ public class CompanySelectView extends VerticalLayout {
 
     private void showError(Exception ex) {
         ex.printStackTrace();
-        Notification.show("Falha: " + ex.getMessage(), 4000, Notification.Position.MIDDLE);
+        Notification.show("Falha: " + ex.getMessage(), 4000, Notification.Position.MIDDLE)
+                .addThemeNames("error");
     }
 }

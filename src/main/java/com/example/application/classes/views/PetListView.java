@@ -6,31 +6,28 @@ import com.example.application.classes.model.Pet;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
 import com.example.application.classes.service.PetService;
-import com.example.application.config.ViewGuard;
-import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 
 @PageTitle("Pets")
 @Route(value = "pets", layout = MainLayout.class)
 @Menu(title = "Pets", icon = "la la-paw", order = 10)
-public class PetListView extends Main {
+public class PetListView extends Main implements BeforeEnterObserver {
 
     private final PetService petService;
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
 
-    private final Grid<Pet> grid;
+    private final Grid<Pet> grid = new Grid<>(Pet.class, false);
 
     private final Button newBtn = new Button("Novo Pet");
     private final Button editBtn = new Button("Editar");
@@ -40,24 +37,41 @@ public class PetListView extends Main {
     public PetListView(PetService petService,
                        CurrentUserService currentUserService,
                        CurrentCompanyService currentCompanyService) {
-        this.petService = petService;
-        this.currentUserService = currentUserService;
-        this.currentCompanyService = currentCompanyService;
 
-        var header = new ViewToolbar("Pets");
-        add(header);
+        this.petService = Objects.requireNonNull(petService);
+        this.currentUserService = Objects.requireNonNull(currentUserService);
+        this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
 
-        this.grid = buildGrid();
+        add(new ViewToolbar("Pets"));
+
+        configureGrid();
         add(grid);
 
-        actionsBar();
+        configureActions();
         var actionsLayout = new HorizontalLayout(newBtn, editBtn, deleteBtn, attendanceBtn);
         actionsLayout.setPadding(true);
         add(actionsLayout);
     }
 
-    private Grid<Pet> buildGrid() {
-        final var grid = new Grid<>(Pet.class, false);
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+
+        reloadGrid();
+    }
+
+    private void configureGrid() {
         grid.setWidthFull();
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
 
@@ -81,15 +95,13 @@ public class PetListView extends Main {
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(p -> p.getBirthDate() != null ? p.getBirthDate() : null)
+        grid.addColumn(Pet::getBirthDate)
                 .setHeader("Data de Nascimento")
                 .setAutoWidth(true)
                 .setSortable(true);
-
-        return grid;
     }
 
-    private void actionsBar() {
+    private void configureActions() {
         newBtn.addThemeNames("success");
         editBtn.addThemeNames("primary");
         deleteBtn.addThemeNames("error");
@@ -106,7 +118,7 @@ public class PetListView extends Main {
             attendanceBtn.setEnabled(hasSelection);
         });
 
-        newBtn.addClickListener(e -> onNew());
+        newBtn.addClickListener(e -> UI.getCurrent().navigate("pets/new"));
         editBtn.addClickListener(e -> onEditSelected());
         deleteBtn.addClickListener(e -> onDeleteSelected());
         attendanceBtn.addClickListener(e -> onAttendanceForSelected());
@@ -123,35 +135,6 @@ public class PetListView extends Main {
                     .addThemeNames("error");
             grid.setItems(List.of());
         }
-    }
-
-    @Override
-    protected void onAttach(AttachEvent attachEvent) {
-        super.onAttach(attachEvent);
-        try {
-            ViewGuard.requireLogin(currentUserService, () -> {
-                Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-                UI.getCurrent().navigate("home");
-            });
-            ViewGuard.requireCompanySelected(currentCompanyService, () -> {;
-                Notification.show("Selecione uma empresa para ver os pets.", 3000, Notification.Position.MIDDLE)
-                        .addThemeNames("warning");
-                UI.getCurrent().navigate("company/select");
-            });
-
-            currentCompanyService.activeCompanyIdOrThrow();
-            reloadGrid();
-        } catch (Exception e) {
-            Notification.show("Erro ao carregar lista de pets: " + e.getMessage(),
-                            5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("home");
-        }
-    }
-
-    private void onNew() {
-        UI.getCurrent().navigate("pets/new");
     }
 
     private void onEditSelected() {
@@ -176,11 +159,13 @@ public class PetListView extends Main {
             petService.softDelete(selected.getId());
             Notification.show("Pet removido com sucesso.", 3000, Notification.Position.MIDDLE)
                     .addThemeNames("success");
+
             reloadGrid();
             grid.asSingleSelect().clear();
             editBtn.setEnabled(false);
             deleteBtn.setEnabled(false);
             attendanceBtn.setEnabled(false);
+
         } catch (SQLException ex) {
             ex.printStackTrace();
             Notification.show("Erro ao remover pet: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)

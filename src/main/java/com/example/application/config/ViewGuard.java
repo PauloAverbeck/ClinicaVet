@@ -3,37 +3,46 @@ package com.example.application.config;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
 import com.example.application.classes.service.UserCompanyService;
+import com.vaadin.flow.router.BeforeEnterEvent;
 
 public final class ViewGuard {
 
     private ViewGuard() {}
 
-    public static void requireLogin(CurrentUserService currentUserService, Runnable onFail) {
-        if (currentUserService == null || !currentUserService.isLoggedIn())  {
-            onFail.run();
+    public static void requireLogin(BeforeEnterEvent event,
+                                    CurrentUserService currentUserService) {
+        if (currentUserService == null || !currentUserService.isLoggedIn()) {
+            event.rerouteTo("home");
         }
     }
 
-    public static void requireCompanySelected(CurrentCompanyService currentCompanyService, Runnable onFail) {
+    public static void requireCompanySelected(BeforeEnterEvent event,
+                                              CurrentCompanyService currentCompanyService) {
         if (currentCompanyService == null || !currentCompanyService.hasSelection()) {
-            onFail.run();
+            event.rerouteTo("company/select");
         }
     }
 
-    public static void requireAdmin(CurrentUserService currentUserService, CurrentCompanyService currentCompanyService,
-                                    UserCompanyService userCompanyService, Runnable onFail) {
-        if (!currentUserService.isLoggedIn() || !currentCompanyService.hasSelection()) {
-            onFail.run();
+    public static void requireAdmin(BeforeEnterEvent event,
+                                    CurrentUserService currentUserService,
+                                    CurrentCompanyService currentCompanyService,
+                                    UserCompanyService userCompanyService) {
+        if (currentUserService == null || !currentUserService.isLoggedIn()) {
+            event.rerouteTo("home");
+            return;
+        }
+        if (currentCompanyService == null || !currentCompanyService.hasSelection()) {
+            event.rerouteTo("company/select");
             return;
         }
         try {
             long userId = currentUserService.requireUserId();
             long companyId = currentCompanyService.activeCompanyIdOrThrow();
-            boolean admin = userCompanyService.isAdmin(userId, companyId);
-            if (!admin) onFail.run();
-        } catch (Exception ex) {
-            onFail.run();
+            if (!userCompanyService.isAdmin(userId, companyId)) {
+                event.rerouteTo("home");
+            }
+        } catch (Exception e) {
+            event.rerouteTo("home");
         }
     }
 }
-

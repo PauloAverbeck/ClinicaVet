@@ -7,8 +7,6 @@ import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
 import com.example.application.classes.service.UserCompanyService;
 import com.example.application.config.ViewGuard;
-import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
@@ -17,51 +15,77 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 
 @PageTitle("Usuários da Empresa")
 @Route(value = "company/users", layout = MainLayout.class)
 @Menu(title = "Usuários da Empresa", icon = "la la-users", order = 7)
-public class CompanyUsersView extends Main  {
-    private CurrentUserService currentUserService;
-    private CurrentCompanyService currentCompanyService;
-    private UserCompanyService userCompanyService;
+public class CompanyUsersView extends Main implements BeforeEnterObserver {
 
-    private final Grid<CompanyUserRow> grid;
+    private final CurrentUserService currentUserService;
+    private final CurrentCompanyService currentCompanyService;
+    private final UserCompanyService userCompanyService;
+
+    private final ViewToolbar header = new ViewToolbar("Usuários da Empresa");
+
+    private final Grid<CompanyUserRow> grid = new Grid<>(CompanyUserRow.class, false);
     private final Button addUserBtn = new Button("Adicionar Usuário");
 
-    public CompanyUsersView(
-            CurrentUserService currentUserService,
-            CurrentCompanyService currentCompanyService,
-            UserCompanyService userCompanyService
-    ) {
+    public CompanyUsersView(CurrentUserService currentUserService,
+                            CurrentCompanyService currentCompanyService,
+                            UserCompanyService userCompanyService) {
+        this.currentUserService = Objects.requireNonNull(currentUserService);
+        this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
+        this.userCompanyService = Objects.requireNonNull(userCompanyService);
 
-        this.currentUserService = currentUserService;
-        this.currentCompanyService = currentCompanyService;
-        this.userCompanyService = userCompanyService;
-
-        String companyName = currentCompanyService.activeCompanyNameOrNull();
-        var header = new ViewToolbar("Usuários da Empresa: " + companyName);
         add(header);
 
-        this.grid = buildGrid();
-        add(this.grid);
+        configureGrid();
+        configureActions();
 
-        addUserBtn.addThemeNames("primary");
-        addUserBtn.addClickListener(e -> openAddUserDialog());
-
-        HorizontalLayout actionsBar = new HorizontalLayout(addUserBtn);
+        var actionsBar = new HorizontalLayout(addUserBtn);
         actionsBar.setPadding(true);
-        add(actionsBar);
+
+        add(grid, actionsBar);
+        setSizeFull();
     }
 
-    private Grid<CompanyUserRow> buildGrid() {
-        final var grid = new Grid<CompanyUserRow>(CompanyUserRow.class, false);
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        ViewGuard.requireAdmin(event, currentUserService, currentCompanyService, userCompanyService);
+
+        if (!currentUserService.isLoggedIn()) return;
+        if (!currentCompanyService.hasSelection()) return;
+        if (!isCurrentUserAdminSafely()) return;
+
+        updateHeader();
+        reloadGrid();
+    }
+
+    private boolean isCurrentUserAdminSafely() {
+        try {
+            long userId = currentUserService.requireUserId();
+            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+            return userCompanyService.isAdmin(userId, companyId);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void updateHeader() {
+        String companyName = currentCompanyService.activeCompanyNameOrNull();
+        if (companyName == null || companyName.isBlank()) {
+            header.setTitle("Usuários da Empresa");
+        } else {
+            header.setTitle("Usuários da Empresa: " + companyName);
+        }
+    }
+
+    private void configureGrid() {
         grid.setWidthFull();
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
 
@@ -85,49 +109,36 @@ public class CompanyUsersView extends Main  {
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(new ComponentRenderer<>( row -> {
-            HorizontalLayout actions = new HorizontalLayout();
+        grid.addColumn(new ComponentRenderer<>(this::buildRowActions))
+                .setHeader("Ações")
+                .setAutoWidth(true);
+    }
 
-            Button adminBtn = new Button(row.isAdmin() ? "Remover Admin" : "Tornar Admin");
-            adminBtn.addClickListener(event -> {
-                try {
-                    userCompanyService.setAdmin(row.getUserId(), currentCompanyService.activeCompanyIdOrThrow(), !row.isAdmin());
-                    Notification.show("Permissão de admin atualizada com sucesso.", 3000, Notification.Position.MIDDLE)
-                            .addThemeNames("success");
-                    reloadGrid();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                    Notification.show("Erro ao atualizar permissão de admin: " + ex.getMessage(),
-                                    6000, Notification.Position.MIDDLE)
-                            .addThemeNames("error");
-                }
-            });
+    private HorizontalLayout buildRowActions(CompanyUserRow row) {
+        var actions = new HorizontalLayout();
+        actions.setPadding(false);
+        actions.setSpacing(true);
 
-            Button removeBtn = new Button("Remover");
-            removeBtn.addThemeNames("error");
-            removeBtn.addClickListener(event -> {
-                try {
-                    userCompanyService.unlink(row.getUserId(), currentCompanyService.activeCompanyIdOrThrow());
-                    Notification.show("Usuário removido com sucesso.", 3000, Notification.Position.MIDDLE)
-                            .addThemeNames("success");
-                    reloadGrid();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                    Notification.show("Erro ao remover usuário: " + ex.getMessage(),
-                                    6000, Notification.Position.MIDDLE)
-                            .addThemeNames("error");
-                }
-            });
-            actions.add(adminBtn, removeBtn);
-            return actions;
-        })).setHeader("Ações").setAutoWidth(true);
+        Button adminBtn = new Button(row.isAdmin() ? "Remover Admin" : "Tornar Admin");
+        adminBtn.addClickListener(e -> onToggleAdmin(row));
 
-        return grid;
+        Button removeBtn = new Button("Remover");
+        removeBtn.addThemeNames("error");
+        removeBtn.addClickListener(e -> onRemoveUser(row));
+
+        actions.add(adminBtn, removeBtn);
+        return actions;
+    }
+
+    private void configureActions() {
+        addUserBtn.addThemeNames("primary");
+        addUserBtn.addClickListener(e -> openAddUserDialog());
     }
 
     private void reloadGrid() {
         try {
-            List<CompanyUserRow> companyUsers = userCompanyService.listCompanyUsers(currentCompanyService.activeCompanyIdOrThrow());
+            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+            List<CompanyUserRow> companyUsers = userCompanyService.listCompanyUsers(companyId);
             grid.setItems(companyUsers);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -138,25 +149,40 @@ public class CompanyUsersView extends Main  {
         }
     }
 
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
+    private void onToggleAdmin(CompanyUserRow row) {
+        try {
+            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+            userCompanyService.setAdmin(row.getUserId(), companyId, !row.isAdmin());
 
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
+            Notification.show("Permissão de admin atualizada com sucesso.",
+                            3000, Notification.Position.MIDDLE)
+                    .addThemeNames("success");
 
-        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("company/select");
-        });
+            reloadGrid();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao atualizar permissão de admin: " + ex.getMessage(),
+                            6000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+        }
+    }
 
-        ViewGuard.requireAdmin(currentUserService, currentCompanyService, userCompanyService, () -> {
-            Notification.show("Acesso negado. Apenas administradores podem acessar esta página.",
-                    4000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
+    private void onRemoveUser(CompanyUserRow row) {
+        try {
+            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+            userCompanyService.unlink(row.getUserId(), companyId);
+
+            Notification.show("Usuário removido com sucesso.",
+                            3000, Notification.Position.MIDDLE)
+                    .addThemeNames("success");
+
+            reloadGrid();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao remover usuário: " + ex.getMessage(),
+                            6000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+        }
     }
 
     private void openAddUserDialog() {
@@ -167,33 +193,34 @@ public class CompanyUsersView extends Main  {
         emailField.setWidthFull();
         emailField.setPlaceholder("exemplo@empresa.com");
 
+        Button cancelBtn = new Button("Cancelar", e -> dialog.close());
+
         Button addBtn = new Button("Adicionar");
         addBtn.addThemeNames("primary");
 
-        Button cancelBtn = new Button("Cancelar", e -> dialog.close());
-
         addBtn.addClickListener(e -> {
+            String email = emailField.getValue() == null ? "" : emailField.getValue().trim();
+            if (email.isBlank()) {
+                Notification.show("O e-mail não pode estar vazio.",
+                                3000, Notification.Position.MIDDLE)
+                        .addThemeNames("error");
+                return;
+            }
+
             try {
-                String email = emailField.getValue().trim();
-                if (email.isEmpty()) {
-                    Notification.show("O e-mail não pode estar vazio.", 3000, Notification.Position.MIDDLE)
-                            .addThemeNames("error");
-                    return;
-                }
-
                 long companyId = currentCompanyService.activeCompanyIdOrThrow();
-                long addedUserId = userCompanyService.addUserByEmailToCompany(email, companyId);
+                userCompanyService.addUserByEmailToCompany(email, companyId);
 
-                Notification.show("Usuário vinculado com sucesso!", 3000, Notification.Position.MIDDLE)
+                Notification.show("Usuário vinculado com sucesso!",
+                                3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
 
                 dialog.close();
                 reloadGrid();
-
             } catch (IllegalStateException ex) {
-                Notification.show(ex.getMessage(), 6000, Notification.Position.MIDDLE)
+                Notification.show(ex.getMessage(),
+                                6000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
-
             } catch (SQLException ex) {
                 ex.printStackTrace();
                 Notification.show("Erro ao adicionar usuário: " + ex.getMessage(),
@@ -202,9 +229,8 @@ public class CompanyUsersView extends Main  {
             }
         });
 
-        dialog.getFooter().add(cancelBtn, addBtn);
-
         dialog.add(emailField);
+        dialog.getFooter().add(cancelBtn, addBtn);
         dialog.open();
     }
 }

@@ -6,16 +6,12 @@ import com.example.application.classes.service.AgendaRow;
 import com.example.application.classes.service.AgendaService;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
-import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -24,7 +20,7 @@ import java.util.List;
 @PageTitle("Agenda")
 @Route(value = "agenda", layout = MainLayout.class)
 @Menu(title = "Agenda", icon = "vaadin:calendar")
-public class AgendaView extends Main {
+public class AgendaView extends Main implements BeforeEnterObserver {
 
     private final AgendaService agendaService;
     private final CurrentCompanyService currentCompanyService;
@@ -32,29 +28,50 @@ public class AgendaView extends Main {
 
     private final Grid<AgendaRow> grid = new Grid<>(AgendaRow.class, false);
     private final ComboBox<String> statusFilter = new ComboBox<>("Status");
+
     private List<AgendaRow> allItems = Collections.emptyList();
 
-    public AgendaView (AgendaService agendaService,
-                       CurrentCompanyService currentCompanyService, CurrentUserService currentUserService) {
+    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    public AgendaView(AgendaService agendaService,
+                      CurrentCompanyService currentCompanyService,
+                      CurrentUserService currentUserService) {
         this.agendaService = agendaService;
         this.currentCompanyService = currentCompanyService;
         this.currentUserService = currentUserService;
 
-        var header = new ViewToolbar("Agenda");
-        add(header);
+        add(new ViewToolbar("Agenda"));
 
         configureStatusFilter();
         configureGrid();
+
         add(statusFilter, grid);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
         loadData();
     }
 
     private void configureGrid() {
         grid.setWidthFull();
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-        grid.addColumn(row -> row.mainDateTime() != null ? row.mainDateTime().format(formatter) : "")
+        grid.addColumn(row -> row.mainDateTime() != null ? row.mainDateTime().format(FMT) : "")
                 .setHeader("Data/Hora")
                 .setAutoWidth(true)
                 .setSortable(true);
@@ -87,6 +104,20 @@ public class AgendaView extends Main {
         statusFilter.addValueChangeListener(e -> applyFilter());
     }
 
+    private void loadData() {
+        try {
+            currentCompanyService.activeCompanyIdOrThrow();
+            allItems = agendaService.listCurrentCompanyAgenda();
+            applyFilter();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Notification.show("Erro ao carregar dados da agenda: " + e.getMessage(),
+                    5000, Notification.Position.MIDDLE).addThemeNames("error");
+            allItems = Collections.emptyList();
+            grid.setItems(allItems);
+        }
+    }
+
     private void applyFilter() {
         if (allItems.isEmpty()) {
             grid.setItems(Collections.emptyList());
@@ -100,34 +131,8 @@ public class AgendaView extends Main {
         }
 
         boolean doneFilter = filter.equals("Realizados");
-
         grid.setItems(allItems.stream()
                 .filter(row -> row.done() == doneFilter)
-                .toList()
-        );
-    }
-
-    private void loadData() {
-        try {
-            currentCompanyService.activeCompanyIdOrThrow();
-            allItems = agendaService.listCurrentCompanyAgenda();
-            applyFilter();
-        } catch (Exception e) {
-            e.printStackTrace();
-            Notification.show("Erro ao carregar dados da agenda: " + e.getMessage());
-        }
-    }
-
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
-        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("company/select");
-        });
+                .toList());
     }
 }

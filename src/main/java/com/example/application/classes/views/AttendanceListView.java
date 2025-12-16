@@ -8,7 +8,6 @@ import com.example.application.classes.service.AttendanceService;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
 import com.example.application.classes.service.PetService;
-import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -25,7 +24,6 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 
 @PageTitle("Atendimentos")
 @Route(value = "pets/:id/attendances", layout = MainLayout.class)
@@ -38,33 +36,112 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
 
     private final Grid<Attendance> grid = new Grid<>(Attendance.class, false);
 
-    private Button newBtn = new Button("Novo Atendimento");
-    private Button editBtn = new Button("Editar");
-    private Button deleteBtn = new Button("Remover");
+    private final Button newBtn = new Button("Novo Atendimento");
+    private final Button editBtn = new Button("Editar");
+    private final Button deleteBtn = new Button("Remover");
+
+    private final ViewToolbar header = new ViewToolbar("Atendimentos");
+
     private Long petId;
     private Pet pet;
 
     private static final DateTimeFormatter ATT_FMT = DateTimeFormatter.ofPattern("HH:mm - dd/MM/yy");
-    private static String formateDateTime(LocalDateTime dt) {
-        if (dt == null) return "";
-        return ATT_FMT.format(dt);
+
+    private static String formatDateTime(LocalDateTime dt) {
+        return dt == null ? "" : ATT_FMT.format(dt);
     }
 
-    public AttendanceListView(PetService petService, AttendanceService attendanceService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
+    public AttendanceListView(
+            PetService petService,
+            AttendanceService attendanceService,
+            CurrentUserService currentUserService,
+            CurrentCompanyService currentCompanyService
+    ) {
         this.petService = petService;
         this.attendanceService = attendanceService;
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
 
-        add(new ViewToolbar("Atendimentos"));
+        add(header);
 
         configureGrid();
         add(grid);
 
-        actionsBar();
+        buildActionsBar();
     }
 
-    private void actionsBar() {
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+
+        var idParam = event.getRouteParameters().get("id").orElse(null);
+        if (idParam == null || idParam.isBlank()) {
+            Notification.show("Pet inválido.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("pets");
+            return;
+        }
+
+        try {
+            petId = Long.valueOf(idParam);
+        } catch (NumberFormatException ex) {
+            Notification.show("Pet inválido.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("pets");
+            return;
+        }
+
+        try {
+            pet = petService.findById(petId).orElse(null);
+            if (pet == null) {
+                Notification.show("Pet não encontrado.", 3000, Notification.Position.MIDDLE);
+                event.rerouteTo("pets");
+                return;
+            }
+
+            header.setTitle("Atendimentos • " + pet.getName());
+
+        } catch (Exception ex) {
+            Notification.show("Erro ao carregar pet: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            event.rerouteTo("pets");
+        }
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        reloadGrid();
+    }
+
+    private void configureGrid() {
+        grid.setWidthFull();
+        grid.setSelectionMode(Grid.SelectionMode.SINGLE);
+
+        grid.addColumn(Attendance::getId)
+                .setHeader("ID")
+                .setAutoWidth(true)
+                .setSortable(true);
+
+        grid.addColumn(a -> formatDateTime(a.getAppointmentAt()))
+                .setHeader("Atendimento em")
+                .setAutoWidth(true)
+                .setSortable(true);
+
+        grid.addColumn(Attendance::getDescription)
+                .setHeader("Descrição")
+                .setFlexGrow(1);
+    }
+
+    private void buildActionsBar() {
         newBtn.addThemeNames("primary");
         editBtn.addThemeNames("primary");
         deleteBtn.addThemeNames("error");
@@ -87,80 +164,19 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
         add(actions);
     }
 
-    private void configureGrid() {
-        grid.setWidthFull();
-
-        grid.addColumn(Attendance::getId)
-                .setHeader("ID")
-                .setAutoWidth(true);
-
-        grid.addColumn(a -> formateDateTime(a.getAppointmentAt()))
-                .setHeader("Atendimento em")
-                .setAutoWidth(true);
-
-        grid.addColumn(Attendance::getDescription)
-                .setHeader("Descrição")
-                .setAutoWidth(true);
-    }
-
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.");
-            event.forwardTo("home");
-        });
-
-        try {
-            currentCompanyService.activeCompanyIdOrThrow();
-        } catch (Exception ex) {
-            Notification.show("Selecione uma empresa.");
-            event.forwardTo("company/select");
-            return;
-        }
-
-        Optional<String> idParam = event.getRouteParameters().get("id");
-        if (idParam.isEmpty()) {
-            Notification.show("Pet inválido.");
-            event.forwardTo("pets");
-            return;
-        }
-
-        try {
-            petId = Long.valueOf(idParam.get());
-            pet = petService.findById(petId).orElse(null);
-            if (pet == null) {
-                    Notification.show("Pet não encontrado.");
-                    event.forwardTo("pets");
-                    return;
-            }
-        } catch (Exception ex) {
-            Notification.show("Erro ao carregar pet: " + ex.getMessage(), 5000, Notification.Position.TOP_CENTER)
-                .addThemeNames("error");
-            event.forwardTo("pets");
-            return;
-        }
-    }
-
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
-        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("company/select");
-        });
-    }
-
     private void reloadGrid() {
+        if (petId == null) {
+            grid.setItems(List.of());
+            return;
+        }
         try {
             List<Attendance> list = attendanceService.listByAnimalId(petId);
             grid.setItems(list);
         } catch (SQLException ex) {
-            Notification.show("Erro ao carregar lista de atendimentos: " + ex.getMessage(), 5000, Notification.Position.TOP_CENTER)
-                .addThemeNames("error");
+            Notification.show("Erro ao carregar lista de atendimentos: " + ex.getMessage(),
+                            5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            grid.setItems(List.of());
         }
     }
 
@@ -195,7 +211,6 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
             editBtn.setEnabled(false);
             deleteBtn.setEnabled(false);
         } catch (SQLException ex) {
-            ex.printStackTrace();
             Notification.show("Erro ao remover atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }

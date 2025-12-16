@@ -5,8 +5,6 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Client;
 import com.example.application.classes.model.Pet;
 import com.example.application.classes.service.*;
-import com.example.application.config.ViewGuard;
-import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -21,8 +19,8 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @PageTitle("Pet")
 @Route(value = "pets/new", layout = MainLayout.class)
@@ -49,13 +47,13 @@ public class PetView extends Main implements BeforeEnterObserver {
                    ClientService clientService,
                    CurrentUserService currentUserService,
                    CurrentCompanyService currentCompanyService) {
-        this.petService = petService;
-        this.clientService = clientService;
-        this.currentUserService = currentUserService;
-        this.currentCompanyService = currentCompanyService;
 
-        var header = new ViewToolbar("Pet");
-        add(header);
+        this.petService = Objects.requireNonNull(petService);
+        this.clientService = Objects.requireNonNull(clientService);
+        this.currentUserService = Objects.requireNonNull(currentUserService);
+        this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
+
+        add(new ViewToolbar("Pet"));
 
         var content = new VerticalLayout();
         content.setPadding(true);
@@ -76,11 +74,50 @@ public class PetView extends Main implements BeforeEnterObserver {
                 birthDatePicker,
                 notesArea
         );
+
         content.add(form);
 
         saveBtn.addThemeNames("primary");
         saveBtn.addClickListener(e -> onSave());
         content.add(saveBtn);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+
+        try {
+            loadClients();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao carregar clientes: " + ex.getMessage(), 5000, Position.MIDDLE)
+                    .addThemeNames("error");
+            event.rerouteTo("pets");
+            return;
+        }
+
+        petId = event.getRouteParameters().getLong("id").orElse(null);
+        if (petId != null) {
+            try {
+                loadExistingPet(petId);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Notification.show("Erro ao carregar pet: " + ex.getMessage(), 5000, Position.MIDDLE)
+                        .addThemeNames("error");
+                event.rerouteTo("pets");
+            }
+        }
     }
 
     private void configureFields() {
@@ -105,40 +142,6 @@ public class PetView extends Main implements BeforeEnterObserver {
         notesArea.setHelperText("Observações gerais sobre o pet");
     }
 
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        RouteParameters params = event.getRouteParameters();
-        params.getLong("id").ifPresent(id -> this.petId = id);
-    }
-
-    @Override
-    protected void onAttach(AttachEvent attachEvent) {
-        super.onAttach(attachEvent);
-        try {
-            ViewGuard.requireLogin(currentUserService, () -> {
-                Notification.show("Faça login para continuar.", 3000, Position.MIDDLE)
-                        .addThemeNames("error");
-                UI.getCurrent().navigate("home");
-            });
-            ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-                Notification.show("Selecione uma empresa para continuar.", 4000, Position.MIDDLE)
-                        .addThemeNames("error");
-                UI.getCurrent().navigate("company/select");
-            });
-
-            currentCompanyService.activeCompanyIdOrThrow();
-            loadClients();
-
-            if (petId != null) {
-                loadExistingPet(petId);
-            }
-        } catch (Exception e) {
-            Notification.show("Erro ao carregar dados: " + e.getMessage(), 5000, Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("home");
-        }
-    }
-
     private void onSave() {
         try {
             currentCompanyService.activeCompanyIdOrThrow();
@@ -152,19 +155,18 @@ public class PetView extends Main implements BeforeEnterObserver {
             }
 
             Client selectedClient = clientField.getValue();
-            pet.setClientId(selectedClient != null ? selectedClient.getId() : 0L);
+            if (selectedClient == null || selectedClient.getId() == 0) {
+                Notification.show("Selecione um cliente.", 3000, Position.MIDDLE)
+                        .addThemeNames("warning");
+                clientField.focus();
+                return;
+            }
 
+            pet.setClientId(selectedClient.getId());
             pet.setName(trimOrEmpty(nameField.getValue()));
             pet.setSpecies(trimOrEmpty(speciesField.getValue()));
             pet.setBreed(trimOrEmpty(breedField.getValue()));
-
-            LocalDate birth = birthDatePicker.getValue();
-            if (birth != null) {
-                pet.setBirthDate(birth);
-            } else {
-                pet.setBirthDate(null);
-            }
-
+            pet.setBirthDate(birthDatePicker.getValue());
             pet.setNotes(trimOrEmpty(notesArea.getValue()));
 
             if (petId != null) {
@@ -182,10 +184,6 @@ public class PetView extends Main implements BeforeEnterObserver {
         } catch (PetValidationException vex) {
             Notification.show(vex.getMessage(), 4000, Position.MIDDLE)
                     .addThemeNames("error");
-        } catch (IllegalStateException ex) {
-            ex.printStackTrace();
-            Notification.show(ex.getMessage(), 4000, Position.MIDDLE)
-                    .addThemeNames("error");
         } catch (SQLException ex) {
             ex.printStackTrace();
             Notification.show("Erro ao salvar pet: " + ex.getMessage(), 5000, Position.MIDDLE)
@@ -197,67 +195,50 @@ public class PetView extends Main implements BeforeEnterObserver {
         }
     }
 
-    private void loadClients() {
-        try {
-            List<Client> clients = clientService.listAllForCompany();
-            clientField.setItems(clients);
-            if (clients.isEmpty()) {
-                Notification.show("Nenhum cliente encontrado. Cadastre um cliente antes de adicionar um pet.", 5000, Position.MIDDLE)
-                        .addThemeNames("warning");
-                UI.getCurrent().navigate("clients/new");
-                saveBtn.setEnabled(false);
-            } else {
-                saveBtn.setEnabled(true);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar clientes: " + ex.getMessage(), 5000, Position.MIDDLE)
-                    .addThemeNames("error");
-            clientField.setItems(List.of());
+    private void loadClients() throws SQLException {
+        List<Client> clients = clientService.listAllForCompany();
+        clientField.setItems(clients);
+
+        if (clients.isEmpty()) {
             saveBtn.setEnabled(false);
+            Notification.show("Nenhum cliente encontrado. Cadastre um cliente antes de adicionar um pet.",
+                            5000, Position.MIDDLE)
+                    .addThemeNames("warning");
+        } else {
+            saveBtn.setEnabled(true);
         }
     }
 
-    private void loadExistingPet(long petId) {
-        try {
-            var opt = petService.findById(petId);
-            if (opt.isEmpty()) {
-                Notification.show("Pet não encontrado (id=" + petId + ").", 4000, Position.MIDDLE)
-                        .addThemeNames("error");
-                UI.getCurrent().navigate("pets");
-                return;
-            }
+    private void loadExistingPet(long petId) throws SQLException {
+        var opt = petService.findById(petId);
+        if (opt.isEmpty()) {
+            throw new IllegalStateException("Pet não encontrado (id=" + petId + ").");
+        }
 
-            Pet pet = opt.get();
+        Pet pet = opt.get();
 
-            nameField.setValue(pet.getName() != null ? pet.getName() : "");
-            speciesField.setValue(pet.getSpecies() != null ? pet.getSpecies() : "");
-            breedField.setValue(pet.getBreed() != null ? pet.getBreed() : "");
+        nameField.setValue(nonNull(pet.getName()));
+        speciesField.setValue(nonNull(pet.getSpecies()));
+        breedField.setValue(nonNull(pet.getBreed()));
+        notesArea.setValue(nonNull(pet.getNotes()));
 
-            if (pet.getBirthDate() != null) {
-                birthDatePicker.setValue(pet.getBirthDate());
-            } else {
-                birthDatePicker.clear();
-            }
+        if (pet.getBirthDate() != null) birthDatePicker.setValue(pet.getBirthDate());
+        else birthDatePicker.clear();
 
-            notesArea.setValue(pet.getNotes() != null ? pet.getNotes() : "");
-
-            if (pet.getClientId() != 0L && clientField.getListDataView() != null) {
-                clientField.getListDataView().getItems()
-                        .filter(c -> c.getId() == pet.getClientId())
-                        .findFirst()
-                        .ifPresent(clientField::setValue);
-            }
-
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar pet: " + ex.getMessage(), 5000, Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("pets");
+        long cid = pet.getClientId();
+        if (cid != 0L) {
+            clientField.getListDataView().getItems()
+                    .filter(c -> c.getId() == cid)
+                    .findFirst()
+                    .ifPresent(clientField::setValue);
         }
     }
 
     private static String trimOrEmpty(String v) {
         return v == null ? "" : v.trim();
+    }
+
+    private static String nonNull(String v) {
+        return v == null ? "" : v;
     }
 }

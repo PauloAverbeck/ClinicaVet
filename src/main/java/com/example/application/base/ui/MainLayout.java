@@ -15,15 +15,14 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
-import com.vaadin.flow.router.AfterNavigationEvent;
-import com.vaadin.flow.router.AfterNavigationObserver;
-import com.vaadin.flow.router.Layout;
+import com.vaadin.flow.router.*;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.theme.lumo.Lumo;
 
 import static com.vaadin.flow.theme.lumo.LumoUtility.*;
 
 @Layout
-public final class MainLayout extends AppLayout implements AfterNavigationObserver {
+public final class MainLayout extends AppLayout implements AfterNavigationObserver, BeforeEnterObserver {
 
     private final CurrentUserService currentUserService;
     private final AppUserService appUserService;
@@ -194,6 +193,15 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
             return "Usuário: " + userPart + " <br>Empresa: " + companyName;
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent beforeEnterEvent) {
+        var viewClass = beforeEnterEvent.getNavigationTarget();
+        if (viewClass.isAnnotationPresent(AnonymousAllowed.class)) return;
+        if (!currentUserService.isLoggedIn()) {
+            beforeEnterEvent.rerouteTo("home");
         }
     }
 }

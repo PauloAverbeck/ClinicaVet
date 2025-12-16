@@ -5,7 +5,7 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Attendance;
 import com.example.application.classes.model.Pet;
 import com.example.application.classes.service.*;
-import com.example.application.config.ViewGuard;
+import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -18,9 +18,10 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-
+import java.util.Optional;
 
 @PageTitle("Atendimento")
 @Route(value = "attendance/new", layout = MainLayout.class)
@@ -34,11 +35,14 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
 
     private final DateTimePicker appointmentAtPicker = new DateTimePicker("Atendimento em");
     private final TextArea descriptionArea = new TextArea("Descrição");
-    private final Button saveBtn = new Button("Salvar");
     private final ComboBox<Pet> petComboBox = new ComboBox<>("Pet");
+    private final Button saveBtn = new Button("Salvar");
 
     private Long attendanceId;
-    private boolean isEditMode = false;
+    private Long preselectedPetId;
+    private boolean editMode;
+
+    private List<Pet> cachedPets = Collections.emptyList();
 
     public AttendanceView(PetService petService,
                           AttendanceService attendanceService,
@@ -49,11 +53,9 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
         this.currentUserService = currentUserService;
         this.currentCompanyService = currentCompanyService;
 
-        Locale locale = new Locale("pt", "BR");
-        appointmentAtPicker.setLocale(locale);
+        appointmentAtPicker.setLocale(new Locale("pt", "BR"));
 
-        var header = new ViewToolbar("Atendimento");
-        add(header);
+        add(new ViewToolbar("Atendimento"));
 
         var content = new VerticalLayout();
         content.setPadding(true);
@@ -71,6 +73,7 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
         petComboBox.setRequiredIndicatorVisible(true);
         petComboBox.setHelperText("Obrigatório");
         petComboBox.setItemLabelGenerator(p -> p.getName() + " (ID: " + p.getId() + ")");
+        petComboBox.setWidthFull();
 
         form.add(petComboBox, appointmentAtPicker, descriptionArea);
         content.add(form);
@@ -78,6 +81,109 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
         saveBtn.addThemeNames("primary");
         saveBtn.addClickListener(e -> onSave());
         content.add(saveBtn);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+
+        Optional<String> idParam = event.getRouteParameters().get("id");
+        if (idParam.isPresent()) {
+            try {
+                attendanceId = Long.parseLong(idParam.get());
+                editMode = true;
+            } catch (NumberFormatException ex) {
+                Notification.show("ID de atendimento inválido.", 4000, Notification.Position.MIDDLE);
+                event.rerouteTo("pets");
+                return;
+            }
+        } else {
+            editMode = false;
+            attendanceId = null;
+        }
+
+        preselectedPetId = null;
+        if (!editMode) {
+            var params = event.getLocation().getQueryParameters().getParameters();
+            var petList = params.get("pet");
+            if (petList != null && !petList.isEmpty()) {
+                try {
+                    preselectedPetId = Long.parseLong(petList.getFirst());
+                } catch (NumberFormatException ignore) {
+                    preselectedPetId = null;
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        try {
+            loadPetsOrDisable();
+
+            if (editMode && attendanceId != null) {
+                loadExistingAttendanceOrReroute(attendanceId);
+            } else if (preselectedPetId != null) {
+                selectPetIfExists(preselectedPetId);
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Notification.show("Erro ao preparar tela: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            UI.getCurrent().navigate("pets");
+        }
+    }
+
+    private void loadPetsOrDisable() throws SQLException {
+        cachedPets = petService.listAllForCompany();
+        petComboBox.setItems(cachedPets);
+
+        boolean hasPets = !cachedPets.isEmpty();
+        saveBtn.setEnabled(hasPets);
+
+        if (!hasPets) {
+            Notification.show(
+                    "Nenhum pet encontrado. Cadastre um pet antes de criar um atendimento.",
+                    5000,
+                    Notification.Position.MIDDLE
+            ).addThemeNames("warning");
+        }
+    }
+
+    private void selectPetIfExists(long petId) {
+        cachedPets.stream()
+                .filter(p -> p.getId() == petId)
+                .findFirst()
+                .ifPresent(petComboBox::setValue);
+    }
+
+    private void loadExistingAttendanceOrReroute(long id) throws SQLException {
+        var opt = attendanceService.findById(id);
+        if (opt.isEmpty()) {
+            Notification.show("Atendimento não encontrado.", 4000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            UI.getCurrent().navigate("pets");
+            return;
+        }
+
+        Attendance attendance = opt.get();
+
+        appointmentAtPicker.setValue(attendance.getAppointmentAt());
+        descriptionArea.setValue(attendance.getDescription() != null ? attendance.getDescription() : "");
+
+        selectPetIfExists(attendance.getAnimalId());
     }
 
     private void onSave() {
@@ -94,7 +200,7 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
             var appointmentAt = appointmentAtPicker.getValue();
             var description = descriptionArea.getValue() != null ? descriptionArea.getValue().trim() : "";
 
-            if (isEditMode && attendanceId != null) {
+            if (editMode && attendanceId != null) {
                 var attendance = attendanceService.findById(attendanceId)
                         .orElseThrow(() -> new IllegalStateException("Atendimento não encontrado para edição."));
 
@@ -131,130 +237,6 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
             ex.printStackTrace();
             Notification.show("Erro inesperado ao salvar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
-        }
-    }
-
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            event.forwardTo("home");
-        });
-
-        try {
-            currentCompanyService.activeCompanyIdOrThrow();
-        } catch (Exception ex) {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            event.forwardTo("company/select");
-            return;
-        }
-
-        try {
-            loadPets();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar pets: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            event.forwardTo("pets");
-            return;
-        }
-
-        event.getRouteParameters().get("id").ifPresent(idStr -> {
-            try {
-                long id = Long.parseLong(idStr);
-                this.attendanceId = id;
-                this.isEditMode = true;
-                loadExistingAttendance(id);
-            } catch (NumberFormatException ex) {
-                ex.printStackTrace();
-                Notification.show("ID de atendimento inválido: " + idStr, 5000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-                event.forwardTo("pets");
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao carregar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-                event.forwardTo("pets");
-            }
-        });
-
-        if (!isEditMode) {
-            var params = event.getLocation().getQueryParameters().getParameters();
-            var petList = params.get("pet");
-            if (petList != null && !petList.isEmpty()) {
-                try {
-                    long petId = Long.parseLong(petList.getFirst());
-                    petComboBox.getListDataView().getItems()
-                            .filter(p -> p.getId() == petId)
-                            .findFirst()
-                            .ifPresent(petComboBox::setValue);
-                } catch (NumberFormatException ignore) {
-                }
-            }
-        }
-    }
-
-    private void loadExistingAttendance(long id) throws Exception {
-        currentCompanyService.activeCompanyIdOrThrow();
-        try {
-            var opt = attendanceService.findById(id);
-            if (opt.isEmpty()) {
-                Notification.show("Atendimento não encontrado.", 5000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-                UI.getCurrent().navigate("attendances");
-                return;
-            }
-
-            Attendance attendance = opt.get();
-
-            if (attendance.getAppointmentAt() != null) {
-                appointmentAtPicker.setValue(attendance.getAppointmentAt());
-            } else {
-                appointmentAtPicker.clear();
-            }
-
-            descriptionArea.setValue(
-                    attendance.getDescription() != null ? attendance.getDescription() : ""
-            );
-
-            long animalId = attendance.getAnimalId();
-            petComboBox.getListDataView().getItems()
-                    .filter(p -> p.getId() == animalId)
-                    .findFirst()
-                    .ifPresent(petComboBox::setValue);
-
-            isEditMode = true;
-            this.attendanceId = id;
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            UI.getCurrent().navigate("attendances");
-        }
-    }
-
-    private void loadPets() {
-        try {
-            var pets = petService.listAllForCompany();
-            petComboBox.setItems(pets);
-
-            if (pets.isEmpty()) {
-                Notification.show(
-                        "Nenhum pet encontrado. Cadastre um pet antes de criar um atendimento.",
-                        5000,
-                        Notification.Position.MIDDLE
-                ).addThemeNames("warning");
-            } else {
-                saveBtn.setEnabled(true);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar pets: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                    .addThemeNames("error");
-            petComboBox.setItems(List.of());
-            saveBtn.setEnabled(false);
         }
     }
 }

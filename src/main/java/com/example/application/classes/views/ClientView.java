@@ -5,7 +5,6 @@ import com.example.application.base.ui.component.DocumentField;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.Client;
 import com.example.application.classes.service.*;
-import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -13,6 +12,7 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
@@ -30,7 +30,7 @@ public class ClientView extends Main implements BeforeEnterObserver {
     private final ViaCepService viaCepService;
 
     private final TextField nameField = new TextField("Nome");
-    private final TextField emailField = new TextField("E-mail");
+    private final EmailField emailField = new EmailField("E-mail");
     private final TextField phoneField = new TextField("Telefone");
 
     private final DocumentField documentField = new DocumentField();
@@ -47,8 +47,11 @@ public class ClientView extends Main implements BeforeEnterObserver {
 
     private final Button saveBtn = new Button("Salvar");
 
-    private Long clientId = null;
-    private boolean editing = false;
+    private Long clientId;
+    private boolean editing;
+
+    private boolean applyingPhoneMask;
+    private boolean applyingCepMask;
 
     public ClientView(ClientService clientService,
                       CurrentUserService currentUserService,
@@ -59,8 +62,7 @@ public class ClientView extends Main implements BeforeEnterObserver {
         this.currentCompanyService = currentCompanyService;
         this.viaCepService = viaCepService;
 
-        var header = new ViewToolbar("Cliente");
-        add(header);
+        add(new ViewToolbar("Cliente"));
 
         var content = new VerticalLayout();
         content.setPadding(true);
@@ -97,6 +99,54 @@ public class ClientView extends Main implements BeforeEnterObserver {
         content.add(saveBtn);
     }
 
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+
+        this.clientId = null;
+        this.editing = false;
+
+        var idOpt = event.getRouteParameters().get("id");
+        if (idOpt.isPresent()) {
+            try {
+                this.clientId = Long.parseLong(idOpt.get());
+                this.editing = true;
+            } catch (NumberFormatException ex) {
+                Notification.show("ID de cliente inválido.", 4000, Notification.Position.MIDDLE)
+                        .addThemeNames("error");
+                event.rerouteTo("clients");
+                return;
+            }
+        }
+
+        saveBtn.setText(editing ? "Salvar alterações" : "Salvar");
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        if (editing) {
+            try {
+                loadExistingClient();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                Notification.show("Erro ao carregar cliente: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                        .addThemeNames("error");
+                UI.getCurrent().navigate("clients");
+            }
+        }
+    }
+
     private void configureFields() {
         nameField.setRequiredIndicatorVisible(true);
         nameField.setHelperText("Obrigatório");
@@ -126,37 +176,50 @@ public class ClientView extends Main implements BeforeEnterObserver {
 
     private void configureMasksAndCepAutoFill() {
         phoneField.addValueChangeListener(e -> {
-            String digits = e.getValue() == null ? "" : e.getValue().replaceAll("\\D", "");
-            if (digits.length() > 11) digits = digits.substring(0, 11);
+            if (applyingPhoneMask) return;
+            applyingPhoneMask = true;
+            try {
+                String digits = e.getValue() == null ? "" : e.getValue().replaceAll("\\D", "");
+                if (digits.length() > 11) digits = digits.substring(0, 11);
 
-            String formatted = digits;
-            if (digits.length() == 10) {
-                formatted = digits.replaceFirst("(\\d{2})(\\d{4})(\\d{4})", "($1) $2-$3");
-            } else if (digits.length() == 11) {
-                formatted = digits.replaceFirst("(\\d{2})(\\d{5})(\\d{4})", "($1) $2-$3");
-            }
-            if (!formatted.equals(e.getValue())) {
-                phoneField.setValue(formatted);
+                String formatted = digits;
+                if (digits.length() == 10) {
+                    formatted = digits.replaceFirst("(\\d{2})(\\d{4})(\\d{4})", "($1) $2-$3");
+                } else if (digits.length() == 11) {
+                    formatted = digits.replaceFirst("(\\d{2})(\\d{5})(\\d{4})", "($1) $2-$3");
+                }
+
+                if (!formatted.equals(e.getValue())) {
+                    phoneField.setValue(formatted);
+                }
+            } finally {
+                applyingPhoneMask = false;
             }
         });
 
         cepField.addValueChangeListener(e -> {
-            String raw = e.getValue() == null ? "" : e.getValue();
-            String digits = raw.replaceAll("\\D", "");
-            if (digits.length() > 8) digits = digits.substring(0, 8);
+            if (applyingCepMask) return;
+            applyingCepMask = true;
+            try {
+                String raw = e.getValue() == null ? "" : e.getValue();
+                String digits = raw.replaceAll("\\D", "");
+                if (digits.length() > 8) digits = digits.substring(0, 8);
 
-            String formatted = digits;
-            if (digits.length() > 5) {
-                formatted = digits.replaceFirst("(\\d{5})(\\d+)", "$1-$2");
-            }
+                String formatted = digits;
+                if (digits.length() > 5) {
+                    formatted = digits.replaceFirst("(\\d{5})(\\d+)", "$1-$2");
+                }
 
-            if (!formatted.equals(raw)) {
-                cepField.setValue(formatted);
-                return; // evita chamada dupla
-            }
+                if (!formatted.equals(raw)) {
+                    cepField.setValue(formatted);
+                    return;
+                }
 
-            if (digits.length() == 8) {
-                lookupCepAndFill(digits);
+                if (digits.length() == 8) {
+                    lookupCepAndFill(digits);
+                }
+            } finally {
+                applyingCepMask = false;
             }
         });
     }
@@ -171,24 +234,15 @@ public class ClientView extends Main implements BeforeEnterObserver {
             }
 
             ViaCepResponse dto = opt.get();
-            if (cityField.isEmpty()) {
-                cityField.setValue(nonNull(dto.getLocalidade()));
-            }
-            if (districtField.isEmpty()) {
-                districtField.setValue(nonNull(dto.getBairro()));
-            }
-            if (streetField.isEmpty()) {
-                streetField.setValue(nonNull(dto.getLogradouro()));
-            }
-            if (ufField.isEmpty()) {
-                ufField.setValue(nonNull(dto.getUf()).toUpperCase());
-            }
-            if (complementField.isEmpty()) {
-                complementField.setValue(nonNull(dto.getComplemento()));
-            }
+
+            if (cityField.isEmpty()) cityField.setValue(nonNull(dto.getLocalidade()));
+            if (districtField.isEmpty()) districtField.setValue(nonNull(dto.getBairro()));
+            if (streetField.isEmpty()) streetField.setValue(nonNull(dto.getLogradouro()));
+            if (ufField.isEmpty()) ufField.setValue(nonNull(dto.getUf()).toUpperCase());
+            if (complementField.isEmpty()) complementField.setValue(nonNull(dto.getComplemento()));
 
         } catch (Exception ex) {
-            ex.printStackTrace(); // opcional
+            ex.printStackTrace();
             Notification.show("Erro ao consultar CEP.", 3000, Notification.Position.TOP_CENTER)
                     .addThemeNames("error");
         }
@@ -214,7 +268,10 @@ public class ClientView extends Main implements BeforeEnterObserver {
             client.setDocument(safeTrim(documentField.getValue()));
 
             client.setCep(safeTrim(cepField.getValue()));
-            client.setUf(safeTrim(ufField.getValue()).toUpperCase());
+
+            String uf = safeTrim(ufField.getValue());
+            client.setUf(uf.isBlank() ? "" : uf.toUpperCase());
+
             client.setCity(safeTrim(cityField.getValue()));
             client.setDistrict(safeTrim(districtField.getValue()));
             client.setStreet(safeTrim(streetField.getValue()));
@@ -225,15 +282,16 @@ public class ClientView extends Main implements BeforeEnterObserver {
 
             if (editing) {
                 clientService.updateBasics(client);
-                Notification.show("Cliente atualizado com sucesso.")
+                Notification.show("Cliente atualizado com sucesso.", 3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
             } else {
                 long id = clientService.create(client);
-                Notification.show("Cliente criado com ID: " + id)
+                Notification.show("Cliente criado com ID: " + id, 3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
             }
 
             UI.getCurrent().navigate("clients");
+
         } catch (ClientValidationException vex) {
             showError(vex.getMessage());
         } catch (Exception ex) {
@@ -242,57 +300,8 @@ public class ClientView extends Main implements BeforeEnterObserver {
         }
     }
 
-    private static String safeTrim(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    private void showError(String msg) {
-        Notification.show(msg, 5000, Notification.Position.TOP_CENTER)
-                .addThemeNames("error");
-    }
-
-    private static String nonNull(String value) {
-        return value != null ? value : "";
-    }
-
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
-        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("company/select");
-        });
-    }
-
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        event.getRouteParameters().get("id").ifPresent(idStr -> {
-            try {
-                this.clientId = Long.parseLong(idStr);
-                this.editing = true;
-                loadExistingClient();
-                saveBtn.setText("Salvar alterações");
-            } catch (NumberFormatException ex) {
-                Notification.show("ID de cliente inválido.", 5000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-                event.rerouteTo("clients");
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao carregar cliente: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-                event.rerouteTo("clients");
-            }
-        });
-    }
-
     private void loadExistingClient() throws Exception {
-        if (clientId == null) {
-            return;
-        }
+        if (clientId == null) return;
 
         currentCompanyService.activeCompanyIdOrThrow();
 
@@ -309,7 +318,7 @@ public class ClientView extends Main implements BeforeEnterObserver {
         notesArea.setValue(nonNull(client.getNotes()));
 
         documentField.setDocType(client.getDocType());
-        documentField.setValue(nonNull(client.getDocument())); // DocumentField já formata
+        documentField.setValue(nonNull(client.getDocument()));
 
         String cep = client.getCep();
         if (cep != null && !cep.isBlank()) {
@@ -323,8 +332,22 @@ public class ClientView extends Main implements BeforeEnterObserver {
         ufField.setValue(nonNull(client.getUf()));
         cityField.setValue(nonNull(client.getCity()));
         districtField.setValue(nonNull(client.getDistrict()));
+        streetField.setValue(nonNull(client.getDistrict()));
         streetField.setValue(nonNull(client.getStreet()));
         numberField.setValue(nonNull(client.getNumber()));
         complementField.setValue(nonNull(client.getComplement()));
+    }
+
+    private static String safeTrim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private void showError(String msg) {
+        Notification.show(msg, 5000, Notification.Position.TOP_CENTER)
+                .addThemeNames("error");
+    }
+
+    private static String nonNull(String value) {
+        return value != null ? value : "";
     }
 }

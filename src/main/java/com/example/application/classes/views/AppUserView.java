@@ -5,10 +5,8 @@ import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.AppUser;
 import com.example.application.classes.model.Company;
 import com.example.application.classes.service.*;
-import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Text;
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -19,9 +17,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -32,7 +28,7 @@ import java.util.stream.Collectors;
 @PageTitle("Usuários")
 @Route(value = "users", layout = MainLayout.class)
 @Menu(title = "Usuários", icon = "la la-users", order = 5)
-public class AppUserView extends Main {
+public class AppUserView extends Main implements BeforeEnterObserver {
 
     private final AppUserService userService;
     private final UserCompanyService userCompanyService;
@@ -45,27 +41,47 @@ public class AppUserView extends Main {
     private final Button editBtn = new Button("Editar");
     private final Button deleteBtn = new Button("Remover");
 
-    public AppUserView(final AppUserService userService,
-                       final UserCompanyService userCompanyService,
-                       final CurrentUserService currentUserService,
-                       final CompanyService companyService, CurrentCompanyService currentCompanyService) {
+    public AppUserView(AppUserService userService,
+                       UserCompanyService userCompanyService,
+                       CurrentUserService currentUserService,
+                       CompanyService companyService,
+                       CurrentCompanyService currentCompanyService) {
+
         this.userService = Objects.requireNonNull(userService);
         this.userCompanyService = Objects.requireNonNull(userCompanyService);
         this.currentUserService = Objects.requireNonNull(currentUserService);
         this.companyService = Objects.requireNonNull(companyService);
-        this.currentCompanyService = currentCompanyService;
+        this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
 
-        var header = new ViewToolbar("Usuários");
-        add(header);
+        add(new ViewToolbar("Usuários"));
 
         this.grid = buildGrid();
         add(grid);
 
         configureActionsBar();
+
         var actionsLayout = new HorizontalLayout(editBtn, deleteBtn);
         actionsLayout.setPadding(true);
         add(actionsLayout);
+    }
 
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+            return;
+        }
+        if (!currentCompanyService.hasSelection()) {
+            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("company/select");
+            return;
+        }
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
         reloadGrid();
     }
 
@@ -119,16 +135,18 @@ public class AppUserView extends Main {
         try {
             List<AppUser> users = userService.listAll();
             Map<Long, String> companiesMap = userCompanyService.companiesByUserIdAggregated();
-            grid.setItems(users);
 
             var col = grid.getColumnByKey("companies");
             if (col != null) {
-                col.setRenderer(new ComponentRenderer<Text, AppUser>(
-                        u -> new Text(companiesMap.getOrDefault(u.getId(), ""))
+                col.setRenderer(new ComponentRenderer<>(u ->
+                        new Text(companiesMap.getOrDefault(u.getId(), ""))
                 ));
             }
 
+            grid.setItems(users);
+
         } catch (SQLException ex) {
+            ex.printStackTrace();
             Notification.show("Erro ao listar usuários: " + ex.getMessage(),
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
@@ -136,7 +154,6 @@ public class AppUserView extends Main {
         }
     }
 
-    /** Edição de usuário selecionado (nome, e-mail, empresa). */
     private void onEditSelected() {
         AppUser selected = grid.asSingleSelect().getValue();
         if (selected == null) {
@@ -214,9 +231,9 @@ public class AppUserView extends Main {
 
                 userCompanyService.replaceCompaniesForUser(actingUserId, selected.getId(), newCompanyIds);
 
-                Notification.show("Usuário atualizado com sucesso.",
-                                3000, Notification.Position.MIDDLE)
+                Notification.show("Usuário atualizado com sucesso.", 3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
+
                 dialog.close();
                 reloadGrid();
             } catch (Exception ex) {
@@ -234,7 +251,6 @@ public class AppUserView extends Main {
         dialog.open();
     }
 
-    /** Remoção de usuário selecionado. */
     private void onDeleteSelected() {
         AppUser selected = grid.asSingleSelect().getValue();
         if (selected == null || selected.getId() == null) {
@@ -244,8 +260,7 @@ public class AppUserView extends Main {
 
         try {
             userService.deleteById(selected.getId());
-            Notification.show("Usuário removido com sucesso.",
-                            3000, Notification.Position.MIDDLE)
+            Notification.show("Usuário removido com sucesso.", 3000, Notification.Position.MIDDLE)
                     .addThemeNames("success");
             reloadGrid();
         } catch (Exception ex) {
@@ -254,19 +269,6 @@ public class AppUserView extends Main {
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
-    }
-
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
-        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("company/select");
-        });
     }
 
     private static String trimOrNull(String v) {

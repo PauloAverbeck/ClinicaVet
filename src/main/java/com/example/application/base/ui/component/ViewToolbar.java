@@ -12,6 +12,8 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public final class ViewToolbar extends Composite<Header> {
 
+    private final H1 title;
+
     public ViewToolbar(@Nullable String viewTitle, Component... components) {
         Header header = getContent();
 
@@ -25,10 +27,10 @@ public final class ViewToolbar extends Composite<Header> {
                 AlignItems.Breakpoint.Medium.CENTER
         );
 
-        var title = new H1(viewTitle == null ? "" : viewTitle);
-        title.addClassNames(FontSize.XLARGE, Margin.NONE, FontWeight.MEDIUM);
+        this.title = new H1(viewTitle == null ? "" : viewTitle);
+        this.title.addClassNames(FontSize.XLARGE, Margin.NONE, FontWeight.MEDIUM);
 
-        var titleWrapper = new Div(title);
+        var titleWrapper = new Div(this.title);
         titleWrapper.addClassNames(Display.FLEX, AlignItems.CENTER);
         header.add(titleWrapper);
 
@@ -53,6 +55,14 @@ public final class ViewToolbar extends Composite<Header> {
         header.getStyle().set("width", "100%");
         header.getStyle().set("position", "sticky");
         header.addClassName("view-toolbar");
+    }
+
+    public void setTitle(@Nullable String viewTitle) {
+        title.setText(viewTitle == null ? "" : viewTitle);
+    }
+
+    public String getTitle() {
+        return title.getText();
     }
 
     public static Component group(Component... components) {

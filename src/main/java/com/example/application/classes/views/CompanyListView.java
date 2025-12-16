@@ -6,7 +6,6 @@ import com.example.application.classes.DocumentType;
 import com.example.application.classes.model.Company;
 import com.example.application.classes.service.CompanyService;
 import com.example.application.classes.service.CurrentUserService;
-import com.example.application.config.ViewGuard;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -17,9 +16,7 @@ import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -28,7 +25,7 @@ import java.util.Objects;
 @PageTitle("Empresas")
 @Route(value = "companies", layout = MainLayout.class)
 @Menu(title = "Empresas", icon = "la la-building", order = 4)
-public class CompanyListView extends Main {
+public class CompanyListView extends Main implements BeforeEnterObserver {
 
     private final CompanyService companyService;
     private final CurrentUserService currentUserService;
@@ -44,16 +41,32 @@ public class CompanyListView extends Main {
         this.companyService = Objects.requireNonNull(companyService);
         this.currentUserService = Objects.requireNonNull(currentUserService);
 
-        var header = new ViewToolbar("Empresas");
-        add(header);
+        add(new ViewToolbar("Empresas"));
 
         this.grid = buildGrid();
         add(grid);
 
         configureActionsBar();
+
         var actionsLayout = new HorizontalLayout(newBtn, editBtn, deleteBtn);
         actionsLayout.setPadding(true);
         add(actionsLayout);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+        }
+    }
+
+    @Override
+    protected void onAttach(AttachEvent event) {
+        super.onAttach(event);
+        if (!currentUserService.isLoggedIn()) {
+            return;
+        }
 
         reloadGrid();
     }
@@ -118,13 +131,10 @@ public class CompanyListView extends Main {
         }
     }
 
-    /* === AÇÕES === */
-
     private void onNew() {
         UI.getCurrent().navigate("company/new");
     }
 
-    /** Edita empresa selecionada (nome + documento/tipo). */
     private void onEditSelected() {
         Company selected = grid.asSingleSelect().getValue();
         if (selected == null || selected.getId() == 0) {
@@ -149,27 +159,8 @@ public class CompanyListView extends Main {
         documentField.setWidthFull();
         documentField.setValue(selected.getDocument() != null ? selected.getDocument() : "");
 
-        docTypeField.addValueChangeListener(e -> {
-            var dt = e.getValue();
-            if (dt == null) {
-                documentField.setHelperText("");
-                return;
-            }
-            switch (dt) {
-                case CPF -> documentField.setHelperText("Apenas 11 números");
-                case CNPJ -> documentField.setHelperText("Apenas 14 números");
-                case PASSPORT -> documentField.setHelperText("5 a 9 caracteres alfanuméricos (sem especiais)");
-            }
-        });
-
-        // Ajusta helper inicial
-        if (selected.getDocumentType() != null) {
-            switch (selected.getDocumentType()) {
-                case CPF -> documentField.setHelperText("Apenas 11 números");
-                case CNPJ -> documentField.setHelperText("Apenas 14 números");
-                case PASSPORT -> documentField.setHelperText("5 a 9 caracteres alfanuméricos (sem especiais)");
-            }
-        }
+        docTypeField.addValueChangeListener(e -> applyDocHelper(documentField, e.getValue()));
+        applyDocHelper(documentField, selected.getDocumentType());
 
         dialog.add(nameField, docTypeField, documentField);
 
@@ -191,10 +182,10 @@ public class CompanyListView extends Main {
                 selected.setName(newName);
                 selected.setDocumentType(newType);
                 selected.setDocument(newDoc);
+
                 companyService.updateBasics(selected);
 
-                Notification.show("Empresa atualizada com sucesso.",
-                                3000, Notification.Position.MIDDLE)
+                Notification.show("Empresa atualizada com sucesso.", 3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
                 dialog.close();
                 reloadGrid();
@@ -208,12 +199,10 @@ public class CompanyListView extends Main {
         save.addThemeNames("primary");
 
         Button cancel = new Button("Cancelar", ev -> dialog.close());
-
         dialog.getFooter().add(cancel, save);
         dialog.open();
     }
 
-    /** Remove empresa selecionada (se o banco permitir). */
     private void onDeleteSelected() {
         Company selected = grid.asSingleSelect().getValue();
         if (selected == null || selected.getId() == 0) {
@@ -223,14 +212,12 @@ public class CompanyListView extends Main {
 
         Dialog confirm = new Dialog();
         confirm.setHeaderTitle("Remover empresa");
-        confirm.add("Tem certeza que deseja remover a empresa \"" +
-                selected.getName() + "\" (ID " + selected.getId() + ")?");
+        confirm.add("Tem certeza que deseja remover a empresa \"" + selected.getName() + "\" (ID " + selected.getId() + ")?");
 
         Button yes = new Button("Remover", ev -> {
             try {
                 companyService.deleteById(selected.getId());
-                Notification.show("Empresa removida com sucesso.",
-                                3000, Notification.Position.MIDDLE)
+                Notification.show("Empresa removida com sucesso.", 3000, Notification.Position.MIDDLE)
                         .addThemeNames("success");
                 confirm.close();
                 reloadGrid();
@@ -244,18 +231,20 @@ public class CompanyListView extends Main {
         yes.addThemeNames("error");
 
         Button no = new Button("Cancelar", ev -> confirm.close());
-
         confirm.getFooter().add(no, yes);
         confirm.open();
     }
 
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
+    private static void applyDocHelper(TextField documentField, DocumentType dt) {
+        if (dt == null) {
+            documentField.setHelperText("");
+            return;
+        }
+        switch (dt) {
+            case CPF -> documentField.setHelperText("Apenas 11 números");
+            case CNPJ -> documentField.setHelperText("Apenas 14 números");
+            case PASSPORT -> documentField.setHelperText("5 a 9 caracteres alfanuméricos (sem especiais)");
+        }
     }
 
     private static String trimOrNull(String v) {

@@ -7,8 +7,6 @@ import com.example.application.classes.DocumentType;
 import com.example.application.classes.service.CompanyService;
 import com.example.application.classes.service.CurrentCompanyService;
 import com.example.application.classes.service.CurrentUserService;
-import com.example.application.config.ViewGuard;
-import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -18,15 +16,15 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.router.Menu;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.vaadin.flow.router.*;
 
-@PageTitle("Empresas")
+import java.util.Objects;
+
+@PageTitle("Cadastrar Empresa")
 @Route(value = "company/new", layout = MainLayout.class)
 @Menu(title = "Cadastrar Empresa", icon = "la la-building", order = 6)
-public class CompanyView extends VerticalLayout {
+public class CompanyView extends VerticalLayout implements BeforeEnterObserver {
+
     private final CompanyService companyService;
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
@@ -36,11 +34,13 @@ public class CompanyView extends VerticalLayout {
     private final TextField document = new TextField("Documento");
     private final Button saveBtn = new Button("Salvar");
 
-    @Autowired
-    public CompanyView(CompanyService companyService, CurrentUserService currentUserService, CurrentCompanyService currentCompanyService) {
-        this.companyService = companyService;
-        this.currentUserService = currentUserService;
-        this.currentCompanyService = currentCompanyService;
+    public CompanyView(CompanyService companyService,
+                       CurrentUserService currentUserService,
+                       CurrentCompanyService currentCompanyService) {
+
+        this.companyService = Objects.requireNonNull(companyService);
+        this.currentUserService = Objects.requireNonNull(currentUserService);
+        this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
@@ -48,8 +48,7 @@ public class CompanyView extends VerticalLayout {
         setPadding(true);
         setSpacing(true);
 
-        var header = new ViewToolbar("Cadastrar Empresa");
-        add(header);
+        add(new ViewToolbar("Cadastrar Empresa"));
 
         var body = new CenteredBody();
         add(body);
@@ -65,45 +64,75 @@ public class CompanyView extends VerticalLayout {
 
         cbDocType.addValueChangeListener(e -> {
             document.clear();
-            document.setHelperText(e.getValue() == DocumentType.CPF ? "Apenas 11 números"
-                    : e.getValue() == DocumentType.CNPJ ? "Apenas 14 números"
-                    : "5 a 9 caracteres alfanuméricos");
+            var dt = e.getValue();
+            if (dt == null) {
+                document.setHelperText("");
+                return;
+            }
+            switch (dt) {
+                case CPF -> document.setHelperText("Apenas 11 números");
+                case CNPJ -> document.setHelperText("Apenas 14 números");
+                case PASSPORT -> document.setHelperText("5 a 9 caracteres alfanuméricos");
+            }
         });
 
+        saveBtn.addThemeNames("primary");
         saveBtn.addClickShortcut(Key.ENTER);
         saveBtn.addClickListener(e -> onSave());
-        saveBtn.addThemeNames("primary");
 
         FormLayout form = new FormLayout(name, cbDocType, document, saveBtn);
         form.setMaxWidth("640px");
+
         content.add(title, form);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!currentUserService.isLoggedIn()) {
+            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
+            event.rerouteTo("home");
+        }
     }
 
     private void onSave() {
         try {
+            String n = trim(name.getValue());
+            DocumentType dt = cbDocType.getValue();
+            String doc = trim(document.getValue());
+
+            if (n == null || n.isBlank()) {
+                Notification.show("Informe o nome da empresa.", 3000, Notification.Position.MIDDLE);
+                name.focus();
+                return;
+            }
+            if (dt == null) {
+                Notification.show("Selecione o tipo de documento.", 3000, Notification.Position.MIDDLE);
+                cbDocType.focus();
+                return;
+            }
+            if (doc == null || doc.isBlank()) {
+                Notification.show("Informe o documento.", 3000, Notification.Position.MIDDLE);
+                document.focus();
+                return;
+            }
+
             long userId = currentUserService.requireUserId();
-            long id = companyService.createForUser(userId, name.getValue(), cbDocType.getValue(), document.getValue());
-            Notification.show("Empresa criada com sucesso! ID: " + id, 5000, Notification.Position.TOP_CENTER)
+            long id = companyService.createForUser(userId, n, dt, doc);
+
+            Notification.show("Empresa criada com sucesso! ID: " + id, 4000, Notification.Position.TOP_CENTER)
                     .addThemeNames("success");
-            name.clear();
-            cbDocType.clear();
-            document.clear();
+
+            currentCompanyService.ensureAutoSelectionIfSingle(userId);
+
+            UI.getCurrent().navigate("company/select");
         } catch (Exception ex) {
+            ex.printStackTrace();
             Notification.show("Erro ao criar empresa: " + ex.getMessage(), 7000, Notification.Position.TOP_CENTER)
                     .addThemeNames("error");
         }
     }
 
-    @Override
-    protected void onAttach(AttachEvent event) {
-        super.onAttach(event);
-        ViewGuard.requireLogin(currentUserService, () -> {
-            Notification.show("Faça login para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("home");
-        });
-        ViewGuard.requireCompanySelected(currentCompanyService, () -> {
-            Notification.show("Selecione uma empresa para continuar.", 3000, Notification.Position.MIDDLE);
-            UI.getCurrent().navigate("company/select");
-        });
+    private static String trim(String v) {
+        return v == null ? null : v.trim();
     }
 }

@@ -12,6 +12,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Hr;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -21,6 +22,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+
+import java.util.Objects;
 
 @PageTitle("Início")
 @Route(value = "", layout = MainLayout.class)
@@ -37,20 +40,26 @@ public class HomeView extends VerticalLayout {
     private final PasswordField password = new PasswordField("Senha");
     private final Button loginBtn = new Button("Entrar");
 
+    private final Paragraph loggedInfo = new Paragraph();
+    private final Button goSystemBtn = new Button("Ir para o sistema");
+    private final Button selectCompanyBtn = new Button("Selecionar empresa");
+
+    private final Anchor signUp = new Anchor("signup", "Criar conta");
+    private final Anchor forgot = new Anchor("forgot", "Esqueci minha senha");
+
     public HomeView(AppUserService appUserService,
                     CurrentUserService currentUserService,
                     CurrentCompanyService currentCompanyService) {
-        this.appUserService = appUserService;
-        this.currentUserService = currentUserService;
-        this.currentCompanyService = currentCompanyService;
+        this.appUserService = Objects.requireNonNull(appUserService);
+        this.currentUserService = Objects.requireNonNull(currentUserService);
+        this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
 
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Início");
-        add(header);
+        add(new ViewToolbar("Início"));
 
         var body = new CenteredBody();
         add(body);
@@ -60,56 +69,102 @@ public class HomeView extends VerticalLayout {
 
         H1 title = new H1("Bem-vindo ao Clínica Vet");
 
-        // Card de Login
-        email.setPlaceholder("voce@exemplo.com");
-        email.setClearButtonVisible(true);
-        password.setRevealButtonVisible(true);
-
-        loginBtn.addThemeNames("primary");
-        loginBtn.addClickShortcut(Key.ENTER);
-        loginBtn.addClickListener(e -> onLogin());
-
-        var signUp = new Anchor("signup", "Criar conta");
-        signUp.getElement().setProperty("title", "Ir para cadastro");
-        var forgot = new Anchor("forgot", "Esqueci minha senha");
-        forgot.getElement().setProperty("title", "Recuperar acesso");
+        configureFields();
+        configureButtons();
+        configureLinks();
 
         content.add(
                 title,
                 email, password, loginBtn,
                 new Hr(),
                 signUp,
-                forgot
+                forgot,
+                new Hr(),
+                loggedInfo,
+                goSystemBtn,
+                selectCompanyBtn
         );
+
         updateUIState();
+    }
+
+    private void configureFields() {
+        email.setPlaceholder("voce@exemplo.com");
+        email.setClearButtonVisible(true);
+        email.setRequiredIndicatorVisible(true);
+        email.setErrorMessage("Informe um e-mail válido");
+
+        email.setPattern("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+        email.addValueChangeListener(ev -> {
+            if (email.isInvalid()) email.setInvalid(false);
+        });
+
+        password.setRevealButtonVisible(true);
+    }
+
+    private void configureButtons() {
+        loginBtn.addThemeNames("primary");
+        loginBtn.addClickShortcut(Key.ENTER);
+        loginBtn.addClickListener(e -> onLogin());
+
+        goSystemBtn.addThemeNames("primary");
+        goSystemBtn.addClickListener(e -> UI.getCurrent().navigate("users"));
+
+        selectCompanyBtn.addThemeNames("tertiary");
+        selectCompanyBtn.addClickListener(e -> UI.getCurrent().navigate("company/select"));
+    }
+
+    private void configureLinks() {
+        signUp.getElement().setProperty("title", "Ir para cadastro");
+        forgot.getElement().setProperty("title", "Recuperar acesso");
     }
 
     private void updateUIState() {
         boolean loggedIn = currentUserService.isLoggedIn();
-        email.setEnabled(!loggedIn);
-        password.setEnabled(!loggedIn);
+
+        email.setVisible(!loggedIn);
+        password.setVisible(!loggedIn);
         loginBtn.setVisible(!loggedIn);
+        signUp.setVisible(!loggedIn);
+        forgot.setVisible(!loggedIn);
+
+        loggedInfo.setVisible(loggedIn);
+        goSystemBtn.setVisible(loggedIn);
+        selectCompanyBtn.setVisible(loggedIn);
+
+        if (loggedIn) {
+            String company = currentCompanyService.activeCompanyNameOrNull();
+            loggedInfo.setText(company == null || company.isBlank()
+                    ? "Você já está logado. Nenhuma empresa selecionada."
+                    : "Você já está logado. Empresa atual: " + company);
+        }
     }
 
     private void onLogin() {
-        final String e = val(email.getValue());
-        final String p = val(password.getValue());
-        if (e == null || e.isBlank() || email.isInvalid()) {
+        final String e = trim(email.getValue());
+        final String p = trim(password.getValue());
+
+        if (e.isBlank() || !e.matches(email.getPattern())) {
+            email.setInvalid(true);
             Notification.show("Informe um e-mail válido.", 3000, Notification.Position.MIDDLE);
-            email.focus(); return;
+            email.focus();
+            return;
         }
-        if (p == null || p.isBlank()) {
+        if (p.isBlank()) {
             Notification.show("Informe sua senha.", 3000, Notification.Position.MIDDLE);
-            password.focus(); return;
+            password.focus();
+            return;
         }
+
+        setLoading(true);
         try {
             var res = appUserService.loginOrConfirm(e, p);
             switch (res) {
                 case LOGGED_IN -> {
-                    // “Loga” na sessão
                     var user = appUserService.findByEmail(e).orElseThrow();
                     currentUserService.onLogin(user.getId(), user.getEmail());
-                    // Seleção de empresa
+
                     if (currentCompanyService.ensureAutoSelectionIfSingle(user.getId())) {
                         UI.getCurrent().navigate("users");
                     } else {
@@ -121,19 +176,18 @@ public class HomeView extends VerticalLayout {
         } catch (Exception ex) {
             ex.printStackTrace();
             Notification.show("Falha ao autenticar.", 3500, Notification.Position.MIDDLE);
-        }
-        updateUIState();
-    }
-
-    private String userDisplay() {
-        try {
-            if (!currentUserService.isLoggedIn()) return "—";
-            long id = currentUserService.requireUserId();
-            return appUserService.findById(id).map(u -> u.getName() + " (id " + id + ")").orElse("id " + id);
-        } catch (Exception e) {
-            return "—";
+        } finally {
+            setLoading(false);
+            updateUIState();
         }
     }
 
-    private static String val(String v) { return v == null ? null : v.trim(); }
+    private void setLoading(boolean loading) {
+        loginBtn.setEnabled(!loading);
+        loginBtn.setText(loading ? "Entrando..." : "Entrar");
+    }
+
+    private static String trim(String v) {
+        return v == null ? "" : v.trim();
+    }
 }

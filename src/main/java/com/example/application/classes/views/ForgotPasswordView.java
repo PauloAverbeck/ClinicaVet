@@ -15,8 +15,8 @@ import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.Objects;
 
 @PageTitle("Esqueci minha senha")
 @Route(value = "forgot", layout = MainLayout.class)
@@ -27,20 +27,18 @@ public class ForgotPasswordView extends VerticalLayout {
     private final AppUserService appUserService;
 
     private final EmailField email = new EmailField("E-mail");
-    private final Button enviarBtn = new Button("Nova senha");
-    private final Button voltarLoginBtn = new Button("Voltar para o login");
+    private final Button submitBtn = new Button("Enviar nova senha");
+    private final Button backBtn = new Button("Voltar para o login");
 
-    @Autowired
     public ForgotPasswordView(AppUserService appUserService) {
-        this.appUserService = appUserService;
+        this.appUserService = Objects.requireNonNull(appUserService);
 
         setSizeFull();
         setJustifyContentMode(JustifyContentMode.CENTER);
         setAlignItems(Alignment.CENTER);
         setSpacing(true);
 
-        var header = new ViewToolbar("Esqueci minha senha");
-        add(header);
+        add(new ViewToolbar("Esqueci minha senha"));
 
         var body = new CenteredBody();
         add(body);
@@ -50,59 +48,68 @@ public class ForgotPasswordView extends VerticalLayout {
 
         H1 title = new H1("Esqueci minha senha");
         Paragraph subtitle = new Paragraph(
-                "Digite seu e-mail. Se existir uma conta associada, enviaremos uma "
-                        + "nova senha para você entrar."
+                "Digite seu e-mail. Se existir uma conta associada, enviaremos uma nova senha para você entrar."
         );
 
+        configureEmailField();
+        configureButtons();
+
+        content.add(title, subtitle, email, submitBtn, backBtn);
+    }
+
+    private void configureEmailField() {
         email.setPlaceholder("voce@exemplo.com");
         email.setClearButtonVisible(true);
         email.setRequiredIndicatorVisible(true);
         email.setErrorMessage("Informe um e-mail válido");
         email.setWidth("320px");
 
-        email.addValueChangeListener( ev -> {
-            if (!email.isInvalid()) {
+        email.setPattern("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+        email.addValueChangeListener(ev -> {
+            if (email.isInvalid()) {
                 email.setInvalid(false);
-                email.setErrorMessage(null);
             }
         });
+    }
 
-        enviarBtn.addClickShortcut(Key.ENTER);
-        enviarBtn.addClickListener(e -> onSubmit());
-        enviarBtn.addThemeNames("primary");
+    private void configureButtons() {
+        submitBtn.addThemeNames("primary");
+        submitBtn.addClickShortcut(Key.ENTER);
+        submitBtn.addClickListener(e -> onSubmit());
 
-        voltarLoginBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("home")));
-        voltarLoginBtn.addThemeNames("tertiary");
-
-
-        content.add(title, subtitle, email, enviarBtn, voltarLoginBtn);
+        backBtn.addThemeNames("tertiary");
+        backBtn.addClickListener(e -> getUI().ifPresent(ui -> ui.navigate("home")));
     }
 
     private void onSubmit() {
-        final String value = email.getValue() != null ? email.getValue().trim() : "";
+        final String value = trim(email.getValue());
         email.setValue(value);
 
-        if (value.isBlank() || email.isInvalid()) {
+        if (value.isBlank() || !value.matches(email.getPattern())) {
             email.setInvalid(true);
-            email.setErrorMessage("E-mail é obrigatório e deve ser válido.");
             email.focus();
             return;
         }
+
         setLoading(true);
         try {
-            boolean sent = appUserService.forgotPassword(value);
+            appUserService.forgotPassword(value);
 
-            if (sent) {
-                var ok = Notification.show("Você receberá uma nova senha em instantes.", 5000, Notification.Position.BOTTOM_CENTER);
-                ok.addThemeNames("success");
+            var ok = Notification.show(
+                    "Se existir uma conta associada a este e-mail, você receberá uma nova senha em instantes.",
+                    5000,
+                    Notification.Position.BOTTOM_CENTER
+            );
+            ok.addThemeNames("success");
 
-                email.clear();
-            } else {
-                var notOk = Notification.show(" E-mail não cadastrado.", 5000, Notification.Position.MIDDLE);
-                notOk.addThemeNames("error");
-            }
+            email.clear();
         } catch (Exception ex) {
-            var n = Notification.show("Erro ao processar solicitação: " + ex.getMessage(), 6000, Notification.Position.MIDDLE);
+            var n = Notification.show(
+                    "Erro ao processar solicitação: " + ex.getMessage(),
+                    6000,
+                    Notification.Position.MIDDLE
+            );
             n.addThemeNames("error");
         } finally {
             setLoading(false);
@@ -110,8 +117,11 @@ public class ForgotPasswordView extends VerticalLayout {
     }
 
     private void setLoading(boolean loading) {
-        enviarBtn.setEnabled(!loading);
-        enviarBtn.setText(loading ? "Enviando..." : "Enviar senha");
+        submitBtn.setEnabled(!loading);
+        submitBtn.setText(loading ? "Enviando..." : "Enviar nova senha");
     }
 
+    private static String trim(String v) {
+        return v == null ? "" : v.trim();
+    }
 }

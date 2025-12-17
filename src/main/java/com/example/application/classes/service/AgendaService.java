@@ -1,6 +1,7 @@
 package com.example.application.classes.service;
 
 import com.example.application.classes.repository.AgendaRepository;
+import com.example.application.config.ServiceGuard;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
@@ -10,16 +11,16 @@ import java.util.List;
 public class AgendaService {
 
     private final AgendaRepository agendaRepository;
-    private final CurrentCompanyService currentCompanyService;
+    private final ServiceGuard serviceGuard;
 
-    public AgendaService (AgendaRepository agendaRepository,
-                         CurrentCompanyService currentCompanyService) {
+    public AgendaService(AgendaRepository agendaRepository,
+                         ServiceGuard serviceGuard) {
         this.agendaRepository = agendaRepository;
-        this.currentCompanyService = currentCompanyService;
+        this.serviceGuard = serviceGuard;
     }
 
     public List<AgendaRow> listCurrentCompanyAgenda() throws SQLException {
-        long companyId = currentCompanyService.activeCompanyIdOrThrow();
+        long companyId = serviceGuard.requireCompanyId();
         return agendaRepository.listByCompany(companyId);
     }
 }

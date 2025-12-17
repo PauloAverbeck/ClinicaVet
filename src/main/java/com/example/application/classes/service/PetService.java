@@ -2,6 +2,7 @@ package com.example.application.classes.service;
 
 import com.example.application.classes.model.Pet;
 import com.example.application.classes.repository.PetRepository;
+import com.example.application.config.ServiceGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,30 +15,24 @@ import java.util.Optional;
 public class PetService {
 
     private final PetRepository petRepository;
-    private final CurrentCompanyService currentCompanyService;
-    private final CurrentUserService currentUserService;
+    private final ServiceGuard serviceGuard;
 
-    public PetService(PetRepository petRepository, CurrentCompanyService currentCompanyService, CurrentUserService currentUserService) {
+    public PetService(PetRepository petRepository,
+                      ServiceGuard serviceGuard) {
         this.petRepository = petRepository;
-        this.currentCompanyService = currentCompanyService;
-        this.currentUserService = currentUserService;
+        this.serviceGuard = serviceGuard;
     }
-
-    private long companyId() {
-        return currentCompanyService.activeCompanyIdOrThrow();
-    }
-
-    /* VALIDAÇÃO */
 
     private void validate(Pet pet) {
-
-        // Normalização
         pet.setName(trim(pet.getName()));
         pet.setSpecies(trim(pet.getSpecies()));
         pet.setBreed(trim(pet.getBreed()));
         pet.setNotes(trim(pet.getNotes()));
 
-        // Nome
+        if (pet.getClientId() <= 0) {
+            throw new PetValidationException("Selecione o tutor do pet.");
+        }
+
         if (pet.getName().isEmpty()) {
             throw new PetValidationException("Nome do pet é obrigatório.");
         }
@@ -45,62 +40,69 @@ public class PetService {
             throw new PetValidationException("Nome excede 200 caracteres.");
         }
 
-        // Tutor
-        if (pet.getClientId() <= 0) {
-            throw new PetValidationException("Selecione o tutor do pet.");
-        }
-
-        // Espécie
-        if (pet.getSpecies().length() > 50) {
+        if (!pet.getSpecies().isEmpty() && pet.getSpecies().length() > 50) {
             throw new PetValidationException("Espécie excede 50 caracteres.");
         }
 
-        // Raça
-        if (pet.getBreed().length() > 100) {
+        if (!pet.getBreed().isEmpty() && pet.getBreed().length() > 100) {
             throw new PetValidationException("Raça excede 100 caracteres.");
         }
 
-        // Nascimento
         if (pet.getBirthDate() != null && pet.getBirthDate().isAfter(LocalDate.now())) {
             throw new PetValidationException("Data de nascimento não pode ser futura.");
         }
     }
 
-    private String trim(String s) {
+    private static String trim(String s) {
         return s == null ? "" : s.trim();
     }
 
-    /* CRUD */
-
     @Transactional
     public long create(Pet pet) throws SQLException {
-        pet.setCompanyId(companyId());
-        if (currentUserService.isLoggedIn()) {
-            pet.setCreatedByUserId(currentUserService.requireUserId());
-        }
+        long userId = serviceGuard.requireUserId();
+        long companyId = serviceGuard.requireCompanyId();
+
+        pet.setCompanyId(companyId);
+        pet.setCreatedByUserId(userId);
+
         validate(pet);
-        return petRepository.insert(pet);
+
+        return petRepository.insert(pet)
+                .orElseThrow(() -> new SQLException("Falha ao inserir pet."));
     }
 
     @Transactional
     public void updateBasics(Pet pet) throws SQLException {
-        pet.setCompanyId(companyId());
+        long companyId = serviceGuard.requireCompanyId();
+
+        pet.setCompanyId(companyId);
         validate(pet);
-        petRepository.updateBasics(pet);
+
+        boolean ok = petRepository.updateBasics(pet);
+        if (!ok) {
+            throw new SQLException("Pet não encontrado, removido, ou conflito de versão.");
+        }
     }
 
     @Transactional(readOnly = true)
     public Optional<Pet> findById(long id) throws SQLException {
-        return petRepository.findById(companyId(), id);
+        long companyId = serviceGuard.requireCompanyId();
+        return petRepository.findById(companyId, id);
     }
 
     @Transactional(readOnly = true)
     public List<Pet> listAllForCompany() throws SQLException {
-        return petRepository.listByCompany(companyId());
+        long companyId = serviceGuard.requireCompanyId();
+        return petRepository.listByCompany(companyId);
     }
 
     @Transactional
     public void softDelete(long id) throws SQLException {
-        petRepository.softDelete(companyId(), id);
+        long companyId = serviceGuard.requireCompanyId();
+
+        boolean ok = petRepository.softDelete(companyId, id);
+        if (!ok) {
+            throw new SQLException("Pet não encontrado ou já removido. id=" + id);
+        }
     }
 }

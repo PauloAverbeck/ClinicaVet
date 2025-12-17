@@ -31,7 +31,7 @@ public class CurrentCompanyHolder implements Serializable {
         this.selectedAt = null;
     }
 
-    public boolean isSelected()           { return companyId != null; }
+    public boolean isSelected() { return companyId != null && companyId > 0; }
     public Long getCompanyId()            { return companyId; }
     public String getCompanyName()        { return companyName; }
     public boolean isAdmin()              { return admin; }

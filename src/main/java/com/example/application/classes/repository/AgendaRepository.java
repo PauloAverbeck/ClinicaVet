@@ -4,10 +4,7 @@ import com.example.application.classes.service.AgendaRow;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,9 +24,9 @@ public class AgendaRepository {
                 a.id,
                 a.scheduled_at,
                 a.appointment_at,
-                p.name       AS pet_name,
-                p.species    AS species,
-                c.name       AS client_name,
+                p.name    AS pet_name,
+                p.species AS species,
+                c.name    AS client_name,
                 a.description
             FROM attendance a
             JOIN pet p    ON p.id = a.animal_id
@@ -38,6 +35,8 @@ public class AgendaRepository {
             ORDER BY COALESCE(a.appointment_at, a.scheduled_at) DESC
             """;
 
+        final LocalDateTime now = LocalDateTime.now();
+
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
@@ -45,19 +44,16 @@ public class AgendaRepository {
 
             try (ResultSet rs = ps.executeQuery()) {
                 List<AgendaRow> list = new ArrayList<>();
+
                 while (rs.next()) {
-                    var schedTs = rs.getTimestamp("scheduled_at");
-                    var appTs   = rs.getTimestamp("appointment_at");
+                    LocalDateTime scheduledAt   = toLocalDateTime(rs, "scheduled_at");
+                    LocalDateTime appointmentAt = toLocalDateTime(rs, "appointment_at");
 
-                    var scheduledAt   = schedTs != null ? schedTs.toLocalDateTime() : null;
-                    var appointmentAt = appTs  != null ? appTs.toLocalDateTime()  : null;
-
-                    var mainDateTime =
-                            appointmentAt != null ? appointmentAt : scheduledAt;
+                    LocalDateTime mainDateTime = appointmentAt != null ? appointmentAt : scheduledAt;
 
                     boolean done = false;
                     if (mainDateTime != null) {
-                        done = mainDateTime.isBefore(LocalDateTime.now());
+                        done = !mainDateTime.isAfter(now);
                     }
 
                     list.add(new AgendaRow(
@@ -73,5 +69,10 @@ public class AgendaRepository {
                 return list;
             }
         }
+    }
+
+    private static LocalDateTime toLocalDateTime(ResultSet rs, String col) throws SQLException {
+        Timestamp ts = rs.getTimestamp(col);
+        return ts == null ? null : ts.toLocalDateTime();
     }
 }

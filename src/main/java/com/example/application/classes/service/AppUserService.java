@@ -3,7 +3,7 @@ package com.example.application.classes.service;
 import com.example.application.classes.ResetMailer;
 import com.example.application.classes.model.AppUser;
 import com.example.application.classes.repository.AppUserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.application.config.ServiceGuard;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,24 +16,27 @@ import java.util.Optional;
 
 @Service
 public class AppUserService {
+
     private final AppUserRepository repo;
     private final PasswordEncoder passwordEncoder;
     private final ResetMailer resetMailer;
     private final CurrentUserService currentUserService;
 
-    @Autowired
+    private final ServiceGuard serviceGuard;
+
     public AppUserService(AppUserRepository repo,
                           PasswordEncoder passwordEncoder,
                           ResetMailer resetMailer,
-                          CurrentUserService currentUserService) {
+                          CurrentUserService currentUserService,
+                          ServiceGuard serviceGuard) {
         this.repo = repo;
         this.passwordEncoder = passwordEncoder;
         this.resetMailer = resetMailer;
         this.currentUserService = currentUserService;
+        this.serviceGuard = serviceGuard;
     }
 
     public enum LoginResult {
-        CONFIRMED,  // poderia ser usado para distinguir, se quiser
         LOGGED_IN,
         INVALID
     }
@@ -46,14 +49,17 @@ public class AppUserService {
      */
     @Transactional
     public LoginResult loginOrConfirm(String email, String plainPassword) throws SQLException {
-        email = normalizeEmail(email);
-        plainPassword = plainPassword == null ? null : plainPassword.trim();
+        String normalizedEmail = normalizeEmail(email);
+        String plain = plainPassword == null ? null : plainPassword.trim();
 
-        AppUser user = repo.findByEmail(email).orElse(null);
+        if (normalizedEmail == null || normalizedEmail.isBlank()) return LoginResult.INVALID;
+        if (plain == null || plain.isBlank()) return LoginResult.INVALID;
+
+        AppUser user = repo.findByEmail(normalizedEmail).orElse(null);
         if (user == null) return LoginResult.INVALID;
 
         String prov = user.getProvisionalPasswordHash();
-        if (prov != null && passwordEncoder.matches(plainPassword, prov)) {
+        if (prov != null && passwordEncoder.matches(plain, prov)) {
             boolean promoted = repo.promoteProvisionalToOfficial(user.getId());
             if (!promoted) return LoginResult.INVALID;
 
@@ -62,7 +68,7 @@ public class AppUserService {
         }
 
         String official = user.getPasswordHash();
-        if (official != null && passwordEncoder.matches(plainPassword, official)) {
+        if (official != null && passwordEncoder.matches(plain, official)) {
             currentUserService.onLogin(user.getId(), user.getEmail());
             return LoginResult.LOGGED_IN;
         }
@@ -70,7 +76,43 @@ public class AppUserService {
         return LoginResult.INVALID;
     }
 
-    /* CREATE / READ / UPDATE / DELETE */
+    public List<AppUser> listAll() throws SQLException {
+        serviceGuard.requireAdmin();
+        return repo.listAll();
+    }
+
+    public Optional<AppUser> findById(long id) throws SQLException {
+        serviceGuard.requireAdmin();
+        return repo.findById(id);
+    }
+
+    public Optional<AppUser> findByEmail(String email) throws SQLException {
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null || normalizedEmail.isBlank()) return Optional.empty();
+        return repo.findByEmail(normalizedEmail);
+    }
+
+    @Transactional
+    public void updateBasics(AppUser user) throws SQLException {
+        serviceGuard.requireAdmin();
+        if (user == null) throw new IllegalArgumentException("Usuário inválido.");
+        user.setEmail(normalizeEmail(user.getEmail()));
+        repo.updateDadosBasicos(user);
+    }
+
+    @Transactional
+    public void deleteById(long id) throws SQLException {
+        serviceGuard.requireAdmin();
+        repo.deleteById(id);
+    }
+
+    @Transactional
+    public void save(AppUser user) throws SQLException {
+        serviceGuard.requireAdmin();
+        if (user == null) throw new IllegalArgumentException("Usuário inválido.");
+        user.setEmail(normalizeEmail(user.getEmail()));
+        repo.save(user);
+    }
 
     @Transactional
     public long create(String name,
@@ -78,9 +120,9 @@ public class AppUserService {
                        String passwordHash,
                        LocalDateTime emailConfirmationTime,
                        String provisionalPasswordHash) throws SQLException {
+        serviceGuard.requireAdmin();
 
         final String normalizedEmail = normalizeEmail(email);
-
         AppUser user = new AppUser()
                 .setName(name)
                 .setEmail(normalizedEmail)
@@ -91,60 +133,25 @@ public class AppUserService {
         return repo.insertWithProvisional(user);
     }
 
-    public Optional<AppUser> findById(long id) throws SQLException {
-        return repo.findById(id);
-    }
-
-    public Optional<AppUser> findByEmail(String email) throws SQLException {
-        return repo.findByEmail(normalizeEmail(email));
-    }
-
-    public boolean existsByEmail(String email) throws SQLException {
-        return repo.existsByEmail(normalizeEmail(email));
-    }
-
-    public List<AppUser> listAll() throws SQLException {
-        return repo.listAll();
-    }
-
-    /** Atualiza dados básicos (email, nome) com optimistic locking. */
-    @Transactional
-    public void updateBasics(AppUser user) throws SQLException {
-        user.setEmail(normalizeEmail(user.getEmail()));
-        repo.updateDadosBasicos(user);
-    }
-
-    /** Salva (insert ou update). */
-    @Transactional
-    public void save(AppUser user) throws SQLException {
-        if (user.getId() == 0) {
-            user.setEmail(normalizeEmail(user.getEmail()));
-            repo.insertWithProvisional(user);
-        } else {
-            updateBasics(user);
-        }
-    }
-
-    /** Hard delete por ID. */
-    @Transactional
-    public void deleteById(long id) throws SQLException {
-        repo.deleteById(id);
-    }
-
-    /* SIGNUP FLOW */
-
     /**
      * Autocadastro:
      * - Normaliza email
-     * - Gera senha provisória e grava o hash com BCrypt em prov_pw_hash
+     * - Gera senha provisória e grava o hash em prov_pw_hash (BCrypt)
      * - Insere usuário com a provisória
-     * - Envia senha provisória por email.
+     * - Envia senha provisória por email
      */
     @Transactional
     public void requestSignup(String name, String email) throws SQLException {
-        final String normalizedEmail = normalizeEmail(email);
+        String normalizedEmail = normalizeEmail(email);
 
-        if (existsByEmail(normalizedEmail)) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Nome é obrigatório.");
+        }
+        if (normalizedEmail == null || normalizedEmail.isBlank()) {
+            throw new IllegalArgumentException("E-mail inválido.");
+        }
+
+        if (repo.existsByEmail(normalizedEmail)) {
             throw new IllegalStateException("E-mail já cadastrado.");
         }
 
@@ -152,14 +159,13 @@ public class AppUserService {
         String provisionalHash = passwordEncoder.encode(provisionalPlain);
 
         AppUser user = new AppUser()
-                .setName(name)
+                .setName(name.trim())
                 .setEmail(normalizedEmail)
                 .setPasswordHash(null)
                 .setEmailConfirmationTime(null)
                 .setProvisionalPasswordHash(provisionalHash);
 
         repo.insertWithProvisional(user);
-
         resetMailer.sendProvisionalPassword(normalizedEmail, provisionalPlain, "signup");
     }
 
@@ -168,39 +174,47 @@ public class AppUserService {
      * - Busca usuário por e-mail
      * - Compara a senha provisória informada
      * - Se confere, promove provisória para oficial e marca email_conf_time
-     *
-     * Retorna true em caso de sucesso; false se a senha provisória não confere.
      */
     @Transactional
     public boolean confirmSignup(String email, String provisionalPlainPassword) throws SQLException {
-        AppUser user = repo.findByEmail(normalizeEmail(email))
+        String normalizedEmail = normalizeEmail(email);
+
+        if (normalizedEmail == null || normalizedEmail.isBlank()) {
+            throw new IllegalArgumentException("E-mail inválido.");
+        }
+        if (provisionalPlainPassword == null || provisionalPlainPassword.isBlank()) {
+            throw new IllegalArgumentException("Senha provisória inválida.");
+        }
+
+        AppUser user = repo.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
 
-        if (user.getProvisionalPasswordHash() == null) {
+        String provHash = user.getProvisionalPasswordHash();
+        if (provHash == null) {
             throw new IllegalStateException("Não há senha provisória pendente para este usuário.");
         }
 
-        if (!passwordEncoder.matches(provisionalPlainPassword, user.getProvisionalPasswordHash())) {
+        if (!passwordEncoder.matches(provisionalPlainPassword.trim(), provHash)) {
             return false;
         }
 
-        repo.promoteProvisionalToOfficial(user.getId());
-        return true;
+        return repo.promoteProvisionalToOfficial(user.getId());
     }
 
     /**
-     * Define uma nova senha oficial após a confirmação de cadastro.
+     * Define nova senha oficial após confirmação de cadastro.
      */
     @Transactional
     public void setPasswordAfterConfirm(String email, String newPassword) throws SQLException {
+        String normalizedEmail = normalizeEmail(email);
         ensureStrongPassword(newPassword);
-        AppUser user = repo.findByEmail(normalizeEmail(email))
+
+        AppUser user = repo.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new IllegalStateException("Usuário não encontrado."));
+
         String encoded = passwordEncoder.encode(newPassword.trim());
         repo.updateOfficialPasswordAndClearProvisional(user.getId(), encoded);
     }
-
-    /* PASSWORD RESET FLOW */
 
     /**
      * Fluxo "Esqueci minha senha":
@@ -209,13 +223,12 @@ public class AppUserService {
      */
     @Transactional
     public boolean forgotPassword(String email) throws SQLException {
-        if (email == null || email.isBlank()) {
-            return false;
-        }
-        var userOpt = repo.findByEmail(normalizeEmail(email));
-        if (userOpt.isEmpty()) {
-            return false;
-        }
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null || normalizedEmail.isBlank()) return false;
+
+        var userOpt = repo.findByEmail(normalizedEmail);
+        if (userOpt.isEmpty()) return false;
+
         var user = userOpt.get();
 
         String provisionalPlain = generateTempPassword(10);
@@ -223,25 +236,30 @@ public class AppUserService {
 
         repo.setProvisional(user.getId(), provisionalHash);
         resetMailer.sendProvisionalPassword(user.getEmail(), provisionalPlain, "forgot");
+
         return true;
     }
 
-    /* UTILITY */
-
     private static void ensureStrongPassword(String pwd) {
-        if (pwd == null || pwd.isBlank()) throw new IllegalArgumentException("Senha inválida");
-        boolean lenOK = pwd.length() >= 8;
-        boolean up = pwd.chars().anyMatch(Character::isUpperCase);
-        boolean low = pwd.chars().anyMatch(Character::isLowerCase);
-        boolean dig = pwd.chars().anyMatch(Character::isDigit);
-        if (!(lenOK && up && low && dig)) throw new IllegalArgumentException("Senha fraca");
+        if (pwd == null || pwd.isBlank()) {
+            throw new IllegalArgumentException("Senha inválida.");
+        }
+        String p = pwd.trim();
+        boolean lenOK = p.length() >= 8;
+        boolean up = p.chars().anyMatch(Character::isUpperCase);
+        boolean low = p.chars().anyMatch(Character::isLowerCase);
+        boolean dig = p.chars().anyMatch(Character::isDigit);
+
+        if (!(lenOK && up && low && dig)) {
+            throw new IllegalArgumentException("Senha fraca. Use 8+ caracteres com maiúscula, minúscula e número.");
+        }
     }
 
     private static String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
     }
 
-    /** Gera uma senha provisória alfanumérica. */
+    /** Gera senha provisória alfanumérica, evitando caracteres ambíguos. */
     private static String generateTempPassword(int length) {
         final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
         SecureRandom random = new SecureRandom();
@@ -250,16 +268,5 @@ public class AppUserService {
             sb.append(alphabet.charAt(random.nextInt(alphabet.length())));
         }
         return sb.toString();
-    }
-
-    /**
-     * Login simples usando apenas a senha oficial.
-     */
-    public boolean login(String email, String plainPassword) throws SQLException {
-        AppUser u = repo.findByEmail(normalizeEmail(email))
-                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
-        String hash = u.getPasswordHash();
-        if (hash == null) return false;
-        return passwordEncoder.matches(plainPassword, hash);
     }
 }

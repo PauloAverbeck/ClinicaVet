@@ -2,6 +2,7 @@ package com.example.application.classes.service;
 
 import com.example.application.classes.model.Attendance;
 import com.example.application.classes.repository.AttendanceRepository;
+import com.example.application.config.ServiceGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,85 +15,94 @@ import java.util.Optional;
 public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
-    private final CurrentUserService currentUserService;
+    private final ServiceGuard serviceGuard;
 
     public AttendanceService(AttendanceRepository attendanceRepository,
-                             CurrentUserService currentUserService) {
+                             ServiceGuard serviceGuard) {
         this.attendanceRepository = attendanceRepository;
-        this.currentUserService = currentUserService;
+        this.serviceGuard = serviceGuard;
     }
 
-    /* VALIDAÇÃO */
-
     private void validate(Attendance a) {
-        // Normalização
-        a.setDescription(trim(a.getDescription()));
+        a.setDescription(trimToEmpty(a.getDescription()));
 
-        // Pet
-        if (a.getAnimalId() == 0L) {
+        if (a.getAnimalId() <= 0L) {
             throw new AttendanceValidationException("O pet do atendimento é obrigatório.");
         }
 
-        // Regra mínima: precisa ter ao menos data ou descrição
         if (a.getAppointmentAt() == null && a.getDescription().isEmpty()) {
             throw new AttendanceValidationException(
                     "Preencha ao menos a data do atendimento ou a descrição."
             );
         }
 
-        // Limite de tamanho da descrição
         if (a.getDescription().length() > 2000) {
             throw new AttendanceValidationException("A descrição excede 2000 caracteres.");
         }
 
-        // Período válido para data do atendimento
         if (a.getAppointmentAt() != null &&
-                a.getAppointmentAt().isBefore(LocalDateTime.now()) &&
                 a.getAppointmentAt().isAfter(LocalDateTime.now().plusYears(2))) {
-            throw new AttendanceValidationException("A data do atendimento deve ser entre agora e dois anos no futuro.");
+            throw new AttendanceValidationException(
+                    "A data do atendimento não pode ser superior a 2 anos no futuro."
+            );
         }
     }
 
-    private String trim(String v) {
+    private static String trimToEmpty(String v) {
         return v == null ? "" : v.trim();
     }
-
-    /* CREATE */
 
     @Transactional
     public long create(Attendance attendance) throws SQLException {
         validate(attendance);
 
-        if (currentUserService.isLoggedIn()) {
-            attendance.setCreatedByUserId(currentUserService.requireUserId());
-        }
-        return attendanceRepository.insert(attendance);
+        long userId = serviceGuard.requireUserId();
+        long companyId = serviceGuard.requireCompanyId();
+
+        attendance.setCreatedByUserId(userId);
+
+        return attendanceRepository.insert(companyId, attendance)
+                .orElseThrow(() -> new AttendanceValidationException(
+                        "Pet inválido ou não pertence à empresa selecionada."
+                ));
     }
 
-    /* READ */
 
     @Transactional(readOnly = true)
     public Optional<Attendance> findById(long id) throws SQLException {
-        return attendanceRepository.findById(id);
+        long companyId = serviceGuard.requireCompanyId();
+        return attendanceRepository.findById(companyId, id);
     }
 
     @Transactional(readOnly = true)
     public List<Attendance> listByAnimalId(long animalId) throws SQLException {
-        return attendanceRepository.listByAnimal(animalId);
+        long companyId = serviceGuard.requireCompanyId();
+        return attendanceRepository.listByAnimal(companyId, animalId);
     }
-
-    /* UPDATE */
 
     @Transactional
     public void updateBasics(Attendance attendance) throws SQLException {
         validate(attendance);
-        attendanceRepository.updateBasics(attendance);
-    }
 
-    /* DELETE */
+        long companyId = serviceGuard.requireCompanyId();
+
+        boolean updated = attendanceRepository.updateBasics(companyId, attendance);
+        if (!updated) {
+            throw new AttendanceValidationException(
+                    "Atendimento não encontrado, não pertence à empresa ou houve conflito de versão."
+            );
+        }
+    }
 
     @Transactional
     public void deleteById(long id) throws SQLException {
-        attendanceRepository.deleteById(id);
+        long companyId = serviceGuard.requireCompanyId();
+
+        boolean deleted = attendanceRepository.deleteById(companyId, id);
+        if (!deleted) {
+            throw new AttendanceValidationException(
+                    "Atendimento não encontrado ou não pertence à empresa selecionada."
+            );
+        }
     }
 }

@@ -2,8 +2,6 @@ package com.example.application.classes.repository;
 
 import com.example.application.classes.DocumentType;
 import com.example.application.classes.model.Company;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -15,22 +13,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-
 @Repository
 public class CompanyRepository {
+
     private final DataSource dataSource;
 
-    @Autowired
     public CompanyRepository(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    public long insert(Company company) throws SQLException {
+    public Optional<Long> insert(Company company) throws SQLException {
         final String sql = """
-                INSERT INTO company (name, document_type, document)
-                VALUES (?, ?, ?)
-                RETURNING id, creation_date, update_date, version
-                """;
+            INSERT INTO company (name, document_type, document)
+            VALUES (?, ?, ?)
+            RETURNING id, creation_date, update_date, version
+            """;
+
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
@@ -39,58 +37,71 @@ public class CompanyRepository {
             ps.setString(3, company.getDocument());
 
             try (ResultSet rs = ps.executeQuery()) {
-                rs.next();
+                if (!rs.next()) return Optional.empty();
+
                 long id = rs.getLong("id");
                 company.setId(id);
                 company.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
                 company.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
                 company.setVersion(rs.getInt("version"));
-                return id;
+
+                return Optional.of(id);
             }
-        } catch (SQLException ex) {
-            if ("23505".equals(ex.getSQLState()) || String.valueOf(ex.getMessage()).toLowerCase().contains("unique")) {
-                throw new DuplicateKeyException("Documento já cadastrado para outra empresa.", ex);
-            }
-            throw ex;
         }
     }
 
     public Optional<Company> findById(long id) throws SQLException {
-        final String sql = baseSelect() + " WHERE id = ? AND deleted_at IS NULL";
+        final String sql = baseSelect() + """
+            WHERE id = ?
+              AND deleted_at IS NULL
+            """;
+
         try (Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, id);
+
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(map(rs));
-                return Optional.empty();
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
             }
         }
     }
 
     public Optional<Company> findByDocument(DocumentType type, String document) throws SQLException {
-        final String sql = baseSelect() + " WHERE document_type = ? AND document = ? AND deleted_at IS NULL";
+        final String sql = baseSelect() + """
+            WHERE document_type = ?
+              AND document = ?
+              AND deleted_at IS NULL
+            """;
+
         try (Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setString(1, type != null ? type.name() : null);
             ps.setString(2, document);
+
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(map(rs));
-                return Optional.empty();
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
             }
         }
     }
 
-    public boolean existsByDocument(DocumentType type, String document) throws SQLException {
+    public boolean existsByDocument(DocumentType type, String document, Long ignoreCompanyId) throws SQLException {
         final String sql = """
-                SELECT 1
-                 FROM company
-                 WHERE document_type = ? AND document = ? AND deleted_at IS NULL
-                 LIMIT 1
-                """;
+            SELECT 1
+              FROM company
+             WHERE document_type = ?
+               AND document = ?
+               AND deleted_at IS NULL
+            """ + (ignoreCompanyId != null ? " AND id <> ?" : "") + " LIMIT 1";
+
         try (Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setString(1, type != null ? type.name() : null);
             ps.setString(2, document);
+            if (ignoreCompanyId != null) ps.setLong(3, ignoreCompanyId);
+
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
@@ -98,10 +109,14 @@ public class CompanyRepository {
     }
 
     public List<Company> listAll() throws SQLException {
-        final String sql = baseSelect() + " WHERE deleted_at IS NULL ORDER BY id";
+        final String sql = baseSelect() + """
+            WHERE deleted_at IS NULL
+            ORDER BY id
+            """;
+
         try (Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
             List<Company> list = new ArrayList<>();
             while (rs.next()) list.add(map(rs));
@@ -110,11 +125,21 @@ public class CompanyRepository {
     }
 
     public List<Company> searchByName(String name, int limit) throws SQLException {
-        final String sql = baseSelect() + " WHERE deleted_at IS NULL AND LOWER(name) LIKE LOWER(?) ORDER BY name LIMIT ?";
+        int safeLimit = Math.max(1, Math.min(limit, 200));
+
+        final String sql = baseSelect() + """
+            WHERE deleted_at IS NULL
+              AND LOWER(name) LIKE LOWER(?)
+            ORDER BY name
+            LIMIT ?
+            """;
+
         try (Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, "%" + name + "%");
-            ps.setInt(2, limit);
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, "%" + (name == null ? "" : name.trim()) + "%");
+            ps.setInt(2, safeLimit);
+
             try (ResultSet rs = ps.executeQuery()) {
                 List<Company> list = new ArrayList<>();
                 while (rs.next()) list.add(map(rs));
@@ -123,18 +148,23 @@ public class CompanyRepository {
         }
     }
 
-    public void updateBasics(Company company) throws SQLException {
+    public boolean updateBasics(Company company) throws SQLException {
         final String sql = """
             UPDATE company
                SET name = ?,
                    document_type = ?,
                    document = ?,
+                   update_date = NOW(),
                    version = version + 1
-            WHERE id = ? AND version = ?
+             WHERE id = ?
+               AND version = ?
+               AND deleted_at IS NULL
             RETURNING update_date, version
             """;
+
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setString(1, company.getName());
             ps.setString(2, company.getDocumentType() != null ? company.getDocumentType().name() : null);
             ps.setString(3, company.getDocument());
@@ -142,55 +172,50 @@ public class CompanyRepository {
             ps.setInt(5, company.getVersion());
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    company.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-                    company.setVersion(rs.getInt("version"));
-                } else {
-                    throw new SQLException("Conflito de versão ao atualizar Company id=" + company.getId());
-                }
+                if (!rs.next()) return false;
+
+                company.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
+                company.setVersion(rs.getInt("version"));
+                return true;
             }
-        } catch (SQLException ex) {
-            if ("23505".equals(ex.getSQLState()) || String.valueOf(ex.getMessage()).toLowerCase().contains("unique")) {
-                throw new DuplicateKeyException("Documento já cadastrado para outra empresa.", ex);
-            }
-            throw ex;
         }
     }
 
-    public void deleteById(long id) throws SQLException {
+    public boolean softDeleteById(long id) throws SQLException {
         final String sql = """
-                UPDATE company
-                     SET deleted_at = CURRENT_TIMESTAMP,
-                         update_date = CURRENT_TIMESTAMP,
-                         version = version + 1
-                 WHERE id = ? AND deleted_at IS NULL
-                """;
+            UPDATE company
+               SET deleted_at = NOW(),
+                   update_date = NOW(),
+                   version = version + 1
+             WHERE id = ?
+               AND deleted_at IS NULL
+            """;
+
         try (Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, id);
-            int rows = ps.executeUpdate();
-            if (rows == 0) throw new SQLException("Nenhuma empresa ativa encontrada para remover. ID=" + id);
+            return ps.executeUpdate() == 1;
         }
     }
-
-    /* HELPERS */
 
     private static String baseSelect() {
         return """
-               SELECT id, version, creation_date, update_date, name, document_type, document, deleted_at
-               FROM company
-               """;
+            SELECT id, version, creation_date, update_date,
+                   name, document_type, document, deleted_at
+              FROM company
+            """;
     }
 
     private static Company map(ResultSet rs) throws SQLException {
-        Company company = new Company();
-        company.setId(rs.getLong("id"));
-        company.setVersion(rs.getInt("version"));
-        company.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
-        company.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-        company.setName(rs.getString("name"));
-        company.setDocumentType(DocumentType.fromString(rs.getString("document_type")));
-        company.setDocument(rs.getString("document"));
-        return company;
+        Company c = new Company();
+        c.setId(rs.getLong("id"));
+        c.setVersion(rs.getInt("version"));
+        c.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
+        c.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
+        c.setName(rs.getString("name"));
+        c.setDocumentType(DocumentType.fromString(rs.getString("document_type")));
+        c.setDocument(rs.getString("document"));
+        return c;
     }
 }

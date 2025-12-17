@@ -117,7 +117,7 @@ public class CompanyView extends VerticalLayout implements BeforeEnterObserver {
             }
 
             long userId = currentUserService.requireUserId();
-            long id = companyService.createForUser(userId, n, dt, doc);
+            long id = companyService.createForCurrentUser(n, dt, doc);
 
             Notification.show("Empresa criada com sucesso! ID: " + id, 4000, Notification.Position.TOP_CENTER)
                     .addThemeNames("success");

@@ -1,7 +1,6 @@
 package com.example.application.classes.repository;
 
 import com.example.application.classes.model.Pet;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -15,143 +14,170 @@ public class PetRepository {
 
     private final DataSource dataSource;
 
-    @Autowired
     public PetRepository(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    /* CREATE */
-
-    public long insert(Pet pet) throws SQLException {
+    public Optional<Long> insert(Pet pet) throws SQLException {
         final String sql = """
-                INSERT INTO pet (company_id, client_id, created_by_user_id, name, species, breed, birth_date, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                RETURNING id, version, creation_date, update_date
-                """;
+            INSERT INTO pet (
+                company_id,
+                client_id,
+                created_by_user_id,
+                name,
+                species,
+                breed,
+                birth_date,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id, version, creation_date, update_date
+            """;
 
         try (Connection con = dataSource.getConnection();
-        PreparedStatement preparedStatement = con.prepareStatement(sql)) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
 
-            preparedStatement.setLong(1, pet.getCompanyId());
-            preparedStatement.setLong(2, pet.getClientId());
-            preparedStatement.setLong(3, pet.getCreatedByUserId());
-            preparedStatement.setString(4, pet.getName());
-            preparedStatement.setString(5, pet.getSpecies());
-            preparedStatement.setString(6, pet.getBreed());
-            preparedStatement.setObject(7, pet.getBirthDate());
-            preparedStatement.setString(8, pet.getNotes());
+            ps.setLong(1, pet.getCompanyId());
+            ps.setLong(2, pet.getClientId());
 
-            try (var rs = preparedStatement.executeQuery()) {
-                rs.next();
+            if (pet.getCreatedByUserId() != null) {
+                ps.setLong(3, pet.getCreatedByUserId());
+            } else {
+                ps.setNull(3, Types.BIGINT);
+            }
+
+            ps.setString(4, pet.getName());
+            ps.setString(5, pet.getSpecies());
+            ps.setString(6, pet.getBreed());
+            ps.setObject(7, pet.getBirthDate());
+            ps.setString(8, pet.getNotes());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return Optional.empty();
+
                 long id = rs.getLong("id");
                 pet.setId(id);
                 pet.setVersion(rs.getInt("version"));
                 pet.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
                 pet.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-                return id;
+
+                return Optional.of(id);
             }
         }
     }
 
-    /* READ */
-
     public Optional<Pet> findById(long companyId, long id) throws SQLException {
-        final String sql = baseSelect() +
-                " WHERE company_id = ? AND id = ? AND deleted_at IS NULL";
+        final String sql = baseSelect() + """
+            WHERE company_id = ?
+              AND id = ?
+              AND deleted_at IS NULL
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, companyId);
             ps.setLong(2, id);
 
-            try (ResultSet resultSet = ps.executeQuery()) {
-                if (resultSet.next()) {
-                    return Optional.of(map(resultSet));
-                }
-                return Optional.empty();
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
             }
         }
     }
 
     public List<Pet> listByClient(long companyId, long clientId) throws SQLException {
-        final String sql = baseSelect() +
-                " WHERE company_id = ? AND client_id = ? AND deleted_at IS NULL ORDER BY name, id";
+        final String sql = baseSelect() + """
+            WHERE company_id = ?
+              AND client_id = ?
+              AND deleted_at IS NULL
+            ORDER BY name, id
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, companyId);
             ps.setLong(2, clientId);
 
-            try (ResultSet resultSet = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 List<Pet> pets = new ArrayList<>();
-                while (resultSet.next()) {
-                    pets.add(map(resultSet));
-                }
+                while (rs.next()) pets.add(map(rs));
                 return pets;
             }
         }
     }
 
     public List<Pet> listByCompany(long companyId) throws SQLException {
-        final String sql = baseSelect() +
-                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY id";
+        final String sql = baseSelect() + """
+            WHERE company_id = ?
+              AND deleted_at IS NULL
+            ORDER BY id
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, companyId);
 
-            try (ResultSet resultSet = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 List<Pet> pets = new ArrayList<>();
-                while (resultSet.next()) {
-                    pets.add(map(resultSet));
-                }
+                while (rs.next()) pets.add(map(rs));
                 return pets;
             }
         }
     }
 
-    public List<Pet> searchByName(long companyId, long clientId, String namePattern) throws SQLException {
-        final String sql = baseSelect() +
-                " WHERE company_id = ? AND client_id = ? AND name ILIKE ? AND deleted_at IS NULL";
+    public List<Pet> searchByName(long companyId, long clientId, String nameQuery, int limit) throws SQLException {
+        int safeLimit = Math.max(1, Math.min(limit, 200));
+
+        final String sql = baseSelect() + """
+            WHERE company_id = ?
+              AND client_id = ?
+              AND deleted_at IS NULL
+              AND name ILIKE ?
+            ORDER BY name
+            LIMIT ?
+            """;
+
+        String like = "%" + (nameQuery == null ? "" : nameQuery.trim()) + "%";
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, companyId);
             ps.setLong(2, clientId);
-            ps.setString(3, "%" + namePattern + "%");
+            ps.setString(3, like);
+            ps.setInt(4, safeLimit);
 
-            try (ResultSet resultSet = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 List<Pet> pets = new ArrayList<>();
-                while (resultSet.next()) {
-                    pets.add(map(resultSet));
-                }
+                while (rs.next()) pets.add(map(rs));
                 return pets;
             }
         }
     }
 
-    /* UPDATE */
-
-    public void updateBasics(Pet pet) throws SQLException {
+    public boolean updateBasics(Pet pet) throws SQLException {
         final String sql = """
-                UPDATE pet
-                SET client_id  = ?,
-                    name       = ?,
-                    species    = ?,
-                    breed      = ?,
-                    birth_date = ?,
-                    notes      = ?,
-                    version    = version + 1,
-                    update_date = NOW()
-                WHERE company_id = ?
-                  AND id = ?
-                  AND version = ?
-                  AND deleted_at IS NULL
-                RETURNING version, update_date
-                """;
+            UPDATE pet
+               SET client_id   = ?,
+                   name        = ?,
+                   species     = ?,
+                   breed       = ?,
+                   birth_date  = ?,
+                   notes       = ?,
+                   update_date = NOW(),
+                   version     = version + 1
+             WHERE company_id = ?
+               AND id = ?
+               AND version = ?
+               AND deleted_at IS NULL
+            RETURNING version, update_date
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, pet.getClientId());
             ps.setString(2, pet.getName());
             ps.setString(3, pet.getSpecies());
@@ -163,59 +189,52 @@ public class PetRepository {
             ps.setInt(9, pet.getVersion());
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    pet.setVersion(rs.getInt("version"));
-                    pet.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-                } else {
-                    throw new SQLException("Conflito de modificações para o Pet com id= " + pet.getId());
-                }
+                if (!rs.next()) return false;
+
+                pet.setVersion(rs.getInt("version"));
+                pet.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
+                return true;
             }
         }
     }
 
-    /* DELETE (soft) */
-
-    public void softDelete(long companyId, long id) throws SQLException {
+    public boolean softDelete(long companyId, long id) throws SQLException {
         final String sql = """
-                UPDATE pet
-                SET deleted_at = NOW(),
-                    update_date = NOW(),
-                    version = version + 1
-                WHERE company_id = ?
-                    AND id = ?
-                    AND deleted_at IS NULL
-                """;
+            UPDATE pet
+               SET deleted_at = NOW(),
+                   update_date = NOW(),
+                   version = version + 1
+             WHERE company_id = ?
+               AND id = ?
+               AND deleted_at IS NULL
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setLong(1, companyId);
             ps.setLong(2, id);
-            int rows = ps.executeUpdate();
-            if (rows == 0) {
-                throw new SQLException("Pet não encontrado ou já deletado. id=" + id);
-            }
+            return ps.executeUpdate() == 1;
         }
     }
 
-    /* HELPERS */
-
     private static String baseSelect() {
         return """
-                SELECT  id,
-                        version,
-                        creation_date,
-                        update_date,
-                        company_id,
-                        client_id,
-                        created_by_user_id,
-                        name,
-                        species,
-                        breed,
-                        birth_date,
-                        notes,
-                        deleted_at
-                FROM pet
-                """;
+            SELECT id,
+                   version,
+                   creation_date,
+                   update_date,
+                   company_id,
+                   client_id,
+                   created_by_user_id,
+                   name,
+                   species,
+                   breed,
+                   birth_date,
+                   notes,
+                   deleted_at
+              FROM pet
+            """;
     }
 
     private static Pet map(ResultSet rs) throws SQLException {
@@ -224,15 +243,22 @@ public class PetRepository {
         pet.setVersion(rs.getInt("version"));
         pet.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
         pet.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
+
         pet.setCompanyId(rs.getLong("company_id"));
         pet.setClientId(rs.getLong("client_id"));
-        pet.setCreatedByUserId(rs.getLong("created_by_user_id"));
+
+        Long createdBy = rs.getObject("created_by_user_id", Long.class);
+        pet.setCreatedByUserId(createdBy);
+
         pet.setName(rs.getString("name"));
         pet.setSpecies(rs.getString("species"));
         pet.setBreed(rs.getString("breed"));
+
         Date birthDate = rs.getDate("birth_date");
         pet.setBirthDate(birthDate != null ? birthDate.toLocalDate() : null);
+
         pet.setNotes(rs.getString("notes"));
+
         Timestamp deletedAt = rs.getTimestamp("deleted_at");
         pet.setDeletedAt(deletedAt != null ? deletedAt.toLocalDateTime() : null);
 

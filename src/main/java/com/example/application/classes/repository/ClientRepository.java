@@ -1,7 +1,6 @@
 package com.example.application.classes.repository;
 
 import com.example.application.classes.model.Client;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -15,54 +14,44 @@ public class ClientRepository {
 
     private final DataSource dataSource;
 
-    @Autowired
     public ClientRepository(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
-    /* CREATE */
-
-    public long insert(Client client) throws SQLException {
+    public Optional<Long> insert(long companyId, Client client) throws SQLException {
         final String sql = """
-        INSERT INTO client (
-            company_id,
-            name,
-            email,
-            phone,
-            notes,
-            doc_type,
-            document,
-            created_by_user_id,
-            cep,
-            uf,
-            city,
-            district,
-            street,
-            number,
-            complement
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        RETURNING id, version, creation_date, update_date
-        """;
+            INSERT INTO client (
+                company_id,
+                name,
+                email,
+                phone,
+                notes,
+                doc_type,
+                document,
+                created_by_user_id,
+                cep,
+                uf,
+                city,
+                district,
+                street,
+                number,
+                complement
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id, version, creation_date, update_date
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setLong(1, client.getCompanyId());
+            ps.setLong(1, companyId);
             ps.setString(2, client.getName());
             ps.setString(3, client.getEmail());
             ps.setString(4, client.getPhone());
             ps.setString(5, client.getNotes());
-
             ps.setString(6, client.getDocType());
             ps.setString(7, client.getDocument());
-
-            if (client.getCreatedByUserId() != null) {
-                ps.setLong(8, client.getCreatedByUserId());
-            } else {
-                ps.setNull(8, Types.BIGINT);
-            }
-
+            setLongOrNull(ps, 8, client.getCreatedByUserId());
             ps.setString(9, client.getCep());
             ps.setString(10, client.getUf());
             ps.setString(11, client.getCity());
@@ -72,22 +61,23 @@ public class ClientRepository {
             ps.setString(15, client.getComplement());
 
             try (ResultSet rs = ps.executeQuery()) {
-                rs.next();
-                long id = rs.getLong("id");
-                client.setId(id);
+                if (!rs.next()) return Optional.empty();
+
+                client.setId(rs.getLong("id"));
                 client.setVersion(rs.getInt("version"));
                 client.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
                 client.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-                return id;
+                return Optional.of(client.getId());
             }
         }
     }
 
-    /* READ */
-
     public Optional<Client> findById(long companyId, long id) throws SQLException {
-        final String sql = baseSelect() +
-                " WHERE company_id = ? AND id = ? AND deleted_at IS NULL";
+        final String sql = baseSelect() + """
+            WHERE company_id = ?
+              AND id = ?
+              AND deleted_at IS NULL
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -96,53 +86,22 @@ public class ClientRepository {
             ps.setLong(2, id);
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(map(rs));
-                }
-                return Optional.empty();
+                return rs.next() ? Optional.of(map(rs)) : Optional.empty();
             }
         }
     }
 
     public List<Client> listByCompany(long companyId) throws SQLException {
-        final String sql = baseSelect() +
-                " WHERE company_id = ? AND deleted_at IS NULL ORDER BY id";
-
-        try (Connection con = dataSource.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            ps.setLong(1, companyId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                List<Client> list = new ArrayList<>();
-                while (rs.next()) {
-                    list.add(map(rs));
-                }
-                return list;
-            }
-        }
-    }
-
-    public List<Client> searchByNameOrEmail(long companyId, String query, int limit) throws SQLException {
         final String sql = baseSelect() + """
-                WHERE company_id = ?
-                  AND deleted_at IS NULL
-                  AND (
-                        LOWER(name)  LIKE LOWER(?)
-                     OR LOWER(email) LIKE LOWER(?)
-                  )
-                ORDER BY name
-                LIMIT ?
-                """;
+            WHERE company_id = ?
+              AND deleted_at IS NULL
+            ORDER BY id
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            String like = "%" + query + "%";
             ps.setLong(1, companyId);
-            ps.setString(2, like);
-            ps.setString(3, like);
-            ps.setInt(4, limit);
 
             try (ResultSet rs = ps.executeQuery()) {
                 List<Client> list = new ArrayList<>();
@@ -154,32 +113,58 @@ public class ClientRepository {
         }
     }
 
-    /* UPDATE */
+    public boolean existsByCompanyAndDocument(long companyId,
+                                              String docType,
+                                              String document,
+                                              Long ignoreId) throws SQLException {
 
-    public void updateBasics(Client client) throws SQLException {
         final String sql = """
-        UPDATE client
-        SET name = ?,
-            email = ?,
-            phone = ?,
-            notes = ?,
-            doc_type = ?,
-            document = ?,
-            cep = ?,
-            uf = ?,
-            city = ?,
-            district = ?,
-            street = ?,
-            number = ?,
-            complement = ?,
-            update_date = NOW(),
-            version = version + 1
-        WHERE id = ?
-         AND version = ?
-         AND company_id = ?
-         AND deleted_at IS NULL
-        RETURNING version, update_date
-        """;
+            SELECT 1
+              FROM client
+             WHERE company_id = ?
+               AND doc_type = ?
+               AND document = ?
+               AND deleted_at IS NULL
+               """ + (ignoreId != null ? " AND id <> ?" : "") + " LIMIT 1";
+
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setLong(1, companyId);
+            ps.setString(2, docType);
+            ps.setString(3, document);
+            if (ignoreId != null) ps.setLong(4, ignoreId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean updateBasics(long companyId, Client client) throws SQLException {
+        final String sql = """
+            UPDATE client
+               SET name = ?,
+                   email = ?,
+                   phone = ?,
+                   notes = ?,
+                   doc_type = ?,
+                   document = ?,
+                   cep = ?,
+                   uf = ?,
+                   city = ?,
+                   district = ?,
+                   street = ?,
+                   number = ?,
+                   complement = ?,
+                   update_date = NOW(),
+                   version = version + 1
+             WHERE id = ?
+               AND version = ?
+               AND company_id = ?
+               AND deleted_at IS NULL
+            RETURNING version, update_date
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -202,68 +187,43 @@ public class ClientRepository {
             ps.setLong(16, client.getCompanyId());
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    client.setVersion(rs.getInt("version"));
-                    client.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
-                } else {
-                    throw new SQLException("Conflito de versão ao atualizar client id=" + client.getId());
-                }
+                if (!rs.next()) return false;
+                client.setVersion(rs.getInt("version"));
+                client.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
+                return true;
             }
         }
     }
 
-    /* DELETE (soft) */
 
-    public void softDelete(long companyId, long id) throws SQLException {
+    public boolean softDelete(long companyId, long id) throws SQLException {
         final String sql = """
-                UPDATE client
-                   SET deleted_at = CURRENT_TIMESTAMP,
-                       update_date = CURRENT_TIMESTAMP,
-                       version = version + 1
-                 WHERE company_id = ?
-                   AND id = ?
-                   AND deleted_at IS NULL
-                """;
+            UPDATE client
+               SET deleted_at = NOW(),
+                   update_date = NOW(),
+                   version = version + 1
+             WHERE company_id = ?
+               AND id = ?
+               AND deleted_at IS NULL
+            """;
 
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setLong(1, companyId);
             ps.setLong(2, id);
-
-            int rows = ps.executeUpdate();
-            if (rows == 0) {
-                throw new SQLException("Cliente não encontrado ou já deletado. id=" + id);
-            }
+            return ps.executeUpdate() == 1;
         }
     }
 
-    /* HELPERS */
-
     private static String baseSelect() {
         return """
-        SELECT id,
-               version,
-               creation_date,
-               update_date,
-               company_id,
-               name,
-               email,
-               phone,
-               notes,
-               deleted_at,
-               doc_type,
-               document,
-               created_by_user_id,
-               cep,
-               uf,
-               city,
-               district,
-               street,
-               number,
-               complement
-        FROM client
-        """;
+            SELECT id, version, creation_date, update_date,
+                   company_id, name, email, phone, notes, deleted_at,
+                   doc_type, document, created_by_user_id,
+                   cep, uf, city, district, street, number, complement
+              FROM client
+            """;
     }
 
     private static Client map(ResultSet rs) throws SQLException {
@@ -273,21 +233,16 @@ public class ClientRepository {
         c.setCreationDate(rs.getTimestamp("creation_date").toLocalDateTime());
         c.setUpdateDate(rs.getTimestamp("update_date").toLocalDateTime());
         c.setCompanyId(rs.getLong("company_id"));
-
         c.setName(rs.getString("name"));
         c.setEmail(rs.getString("email"));
         c.setPhone(rs.getString("phone"));
         c.setNotes(rs.getString("notes"));
-
-        Timestamp deleted = rs.getTimestamp("deleted_at");
-        c.setDeletedAt(deleted != null ? deleted.toLocalDateTime() : null);
-
+        c.setDeletedAt(rs.getTimestamp("deleted_at") != null
+                ? rs.getTimestamp("deleted_at").toLocalDateTime()
+                : null);
         c.setDocType(rs.getString("doc_type"));
         c.setDocument(rs.getString("document"));
-
-        Long createdBy = rs.getObject("created_by_user_id", Long.class);
-        c.setCreatedByUserId(createdBy);
-
+        c.setCreatedByUserId(rs.getObject("created_by_user_id", Long.class));
         c.setCep(rs.getString("cep"));
         c.setUf(rs.getString("uf"));
         c.setCity(rs.getString("city"));
@@ -295,38 +250,11 @@ public class ClientRepository {
         c.setStreet(rs.getString("street"));
         c.setNumber(rs.getString("number"));
         c.setComplement(rs.getString("complement"));
-
         return c;
     }
 
-    public boolean existsByCompanyAndDocument(long companyId,
-                                              String docType,
-                                              String document,
-                                              Long ignoreId) throws SQLException {
-        final String sqlBase = """
-            SELECT 1
-              FROM client
-             WHERE company_id = ?
-               AND doc_type = ?
-               AND document = ?
-               AND deleted_at IS NULL
-            """;
-
-        String sql = sqlBase + (ignoreId != null ? " AND id <> ?" : "") + " LIMIT 1";
-
-        try (Connection con = dataSource.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
-
-            ps.setLong(1, companyId);
-            ps.setString(2, docType);
-            ps.setString(3, document);
-            if (ignoreId != null) {
-                ps.setLong(4, ignoreId);
-            }
-
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        }
+    private static void setLongOrNull(PreparedStatement ps, int idx, Long v) throws SQLException {
+        if (v != null) ps.setLong(idx, v);
+        else ps.setNull(idx, Types.BIGINT);
     }
 }

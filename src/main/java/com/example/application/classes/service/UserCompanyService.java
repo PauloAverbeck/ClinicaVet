@@ -12,11 +12,14 @@ import java.util.stream.Collectors;
 
 @Service
 public class UserCompanyService {
+
     private final UserCompanyRepository userCompanyRepository;
     private final AppUserRepository appUserRepository;
     private final CurrentUserService currentUserService;
 
-    public UserCompanyService(UserCompanyRepository userCompanyRepository, AppUserRepository appUserRepository, CurrentUserService currentUserService) {
+    public UserCompanyService(UserCompanyRepository userCompanyRepository,
+                              AppUserRepository appUserRepository,
+                              CurrentUserService currentUserService) {
         this.userCompanyRepository = userCompanyRepository;
         this.appUserRepository = appUserRepository;
         this.currentUserService = currentUserService;
@@ -37,32 +40,39 @@ public class UserCompanyService {
         userCompanyRepository.softDelete(userId, companyId);
     }
 
+    @Transactional(readOnly = true)
     public boolean isAdmin(long userId, long companyId) throws SQLException {
         return userCompanyRepository.isUserAdmin(userId, companyId);
     }
 
-    public void setAdmin(long userId, long companyId, boolean isAdmin) throws SQLException {
-        userCompanyRepository.setAdmin(userId, companyId, isAdmin);
-    }
-
+    @Transactional(readOnly = true)
     public Optional<UserCompanyLink> findActiveLink(long userId, long companyId) throws SQLException {
         return userCompanyRepository.findActive(userId, companyId);
     }
 
+    @Transactional(readOnly = true)
     public Map<Long, String> companiesByUserIdAggregated() throws SQLException {
         return userCompanyRepository.companiesByUserIdAggregated();
     }
 
+    @Transactional(readOnly = true)
     public List<CompanyChoice> companyChoicesFor(long userId) throws SQLException {
         return userCompanyRepository.listActiveCompanyChoicesByUser(userId);
     }
 
+    @Transactional(readOnly = true)
     public List<UserCompanyLink> membersOf(long companyId) throws SQLException {
         return userCompanyRepository.listActiveByCompany(companyId);
     }
 
+    @Transactional(readOnly = true)
     public List<UserCompanyLink> linksOfUser(long userId) throws SQLException {
         return userCompanyRepository.listActiveLinksByUser(userId);
+    }
+
+    @Transactional
+    public void setAdmin(long userId, long companyId, boolean isAdmin) throws SQLException {
+        userCompanyRepository.setAdmin(userId, companyId, isAdmin);
     }
 
     @Transactional
@@ -79,12 +89,10 @@ public class UserCompanyService {
         Set<Long> toDelete = new HashSet<>(oldIds);
         toDelete.removeAll(newCompanyIds);
 
-        // 1) Delete first
         for (Long cid : toDelete) {
             userCompanyRepository.softDelete(userId, cid);
         }
 
-        // 2) Add / Restore
         for (Long cid : toAdd) {
             userCompanyRepository.insertOrRestore(actingUserId, userId, cid, false);
         }
@@ -95,14 +103,22 @@ public class UserCompanyService {
         return appUserRepository.listCompanyUsers(companyId);
     }
 
+    @Transactional
     public long addUserByEmailToCompany(String email, long companyId) throws SQLException {
-        var userOpt = appUserRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new IllegalStateException("Usuário com e-mail " + email + " não encontrado.");
-        }
-        long userId = userOpt.get().getId();
-        long currentUserId = currentUserService.requireUserId();
+        String normalized = normalizeEmail(email);
 
-        return userCompanyRepository.insertOrRestore(currentUserId, userId, companyId, false);
+        var userOpt = appUserRepository.findByEmail(normalized);
+        if (userOpt.isEmpty()) {
+            throw new IllegalStateException("Usuário com e-mail " + normalized + " não encontrado.");
+        }
+
+        long userId = userOpt.get().getId();
+        long actingUserId = currentUserService.requireUserId();
+
+        return userCompanyRepository.insertOrRestore(actingUserId, userId, companyId, false);
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 }

@@ -17,13 +17,13 @@
 #
 - **Semana 3 - Clients e Pets**
 - [x] V2: tabelas client e pet;
-- [ ] Repositórios JDBC e Services com validações (unicidade documento por empresa);
+- [x] Repositórios JDBC e Services com validações (unicidade documento por empresa);
 - [x] Telas: ClientList/Form (com busca), PetList/Form (escolher tutor).
 #
 - **Semana 4 - Atendimentos**
 - [x] V3: tabela attendance;
 - [x] Telas: AttendanceList/Form (agendamento e realização);
-- [ ] Completar ForgotPassword enviando provisória (SMTP real) e ajustar UX (mensagens, validações);
+- [x] Completar ForgotPassword enviando provisória (SMTP real) e ajustar UX (mensagens, validações);
 - [ ] Docker Compose revisado (app + db), README atualizado.
 
 ## Regras de Negócio

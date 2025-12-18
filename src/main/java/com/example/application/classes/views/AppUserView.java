@@ -3,12 +3,9 @@ package com.example.application.classes.views;
 import com.example.application.base.ui.MainLayout;
 import com.example.application.base.ui.component.ViewToolbar;
 import com.example.application.classes.model.AppUser;
-import com.example.application.classes.model.Company;
 import com.example.application.classes.service.*;
 import com.vaadin.flow.component.AttachEvent;
-import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
@@ -16,14 +13,11 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.*;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @PageTitle("Usuários")
 @Route(value = "users", layout = MainLayout.class)
@@ -33,10 +27,9 @@ public class AppUserView extends Main implements BeforeEnterObserver {
     private final AppUserService userService;
     private final UserCompanyService userCompanyService;
     private final CurrentUserService currentUserService;
-    private final CompanyService companyService;
     private final CurrentCompanyService currentCompanyService;
 
-    private final Grid<AppUser> grid;
+    private final Grid<CompanyUserRow> grid = new Grid<>(CompanyUserRow.class, false);
 
     private final Button editBtn = new Button("Editar");
     private final Button deleteBtn = new Button("Remover");
@@ -44,22 +37,19 @@ public class AppUserView extends Main implements BeforeEnterObserver {
     public AppUserView(AppUserService userService,
                        UserCompanyService userCompanyService,
                        CurrentUserService currentUserService,
-                       CompanyService companyService,
                        CurrentCompanyService currentCompanyService) {
 
         this.userService = Objects.requireNonNull(userService);
         this.userCompanyService = Objects.requireNonNull(userCompanyService);
         this.currentUserService = Objects.requireNonNull(currentUserService);
-        this.companyService = Objects.requireNonNull(companyService);
         this.currentCompanyService = Objects.requireNonNull(currentCompanyService);
 
         add(new ViewToolbar("Usuários"));
 
-        this.grid = buildGrid();
+        configureGrid();
         add(grid);
 
         configureActionsBar();
-
         var actionsLayout = new HorizontalLayout(editBtn, deleteBtn);
         actionsLayout.setPadding(true);
         add(actionsLayout);
@@ -82,36 +72,33 @@ public class AppUserView extends Main implements BeforeEnterObserver {
     @Override
     protected void onAttach(AttachEvent event) {
         super.onAttach(event);
+        updateActionButtonsState(false);
         reloadGrid();
     }
 
-    private Grid<AppUser> buildGrid() {
-        final var grid = new Grid<>(AppUser.class, false);
+    private void configureGrid() {
         grid.setWidthFull();
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
 
-        grid.addColumn(user -> user.getId() == null ? "-" : user.getId().toString())
+        grid.addColumn(CompanyUserRow::getUserId)
                 .setHeader("ID")
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(AppUser::getName)
+        grid.addColumn(CompanyUserRow::getName)
                 .setHeader("Nome")
                 .setAutoWidth(true)
                 .setSortable(true);
 
-        grid.addColumn(AppUser::getEmail)
+        grid.addColumn(CompanyUserRow::getEmail)
                 .setHeader("E-mail")
                 .setFlexGrow(1)
                 .setSortable(true);
 
-        grid.addColumn(new ComponentRenderer<Text, AppUser>(u -> new Text("")))
-                .setHeader("Empresa(s)")
-                .setKey("companies")
+        grid.addColumn(row -> row.isAdmin() ? "Sim" : "Não")
+                .setHeader("Admin")
                 .setAutoWidth(true)
-                .setFlexGrow(1);
-
-        return grid;
+                .setSortable(true);
     }
 
     private void configureActionsBar() {
@@ -123,28 +110,24 @@ public class AppUserView extends Main implements BeforeEnterObserver {
 
         grid.asSingleSelect().addValueChangeListener(e -> {
             boolean hasSelection = e.getValue() != null;
-            editBtn.setEnabled(hasSelection);
-            deleteBtn.setEnabled(hasSelection);
+            updateActionButtonsState(hasSelection);
         });
 
         editBtn.addClickListener(e -> onEditSelected());
         deleteBtn.addClickListener(e -> onDeleteSelected());
     }
 
+    private void updateActionButtonsState(boolean hasSelection) {
+        boolean isAdmin = currentCompanyService.isAdmin();
+        editBtn.setEnabled(isAdmin && hasSelection);
+        deleteBtn.setEnabled(isAdmin && hasSelection);
+    }
+
     private void reloadGrid() {
         try {
-            List<AppUser> users = userService.listAll();
-            Map<Long, String> companiesMap = userCompanyService.companiesByUserIdAggregated();
-
-            var col = grid.getColumnByKey("companies");
-            if (col != null) {
-                col.setRenderer(new ComponentRenderer<>(u ->
-                        new Text(companiesMap.getOrDefault(u.getId(), ""))
-                ));
-            }
-
-            grid.setItems(users);
-
+            long companyId = currentCompanyService.activeCompanyIdOrThrow();
+            List<CompanyUserRow> rows = userCompanyService.listCompanyUsers(companyId);
+            grid.setItems(rows);
         } catch (SQLException ex) {
             ex.printStackTrace();
             Notification.show("Erro ao listar usuários: " + ex.getMessage(),
@@ -155,111 +138,94 @@ public class AppUserView extends Main implements BeforeEnterObserver {
     }
 
     private void onEditSelected() {
-        AppUser selected = grid.asSingleSelect().getValue();
-        if (selected == null) {
+        if (!currentCompanyService.isAdmin()) {
+            Notification.show("Ação permitida apenas para administradores.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            return;
+        }
+
+        CompanyUserRow selectedRow = grid.asSingleSelect().getValue();
+        if (selectedRow == null) {
             Notification.show("Selecione um usuário.", 3000, Notification.Position.MIDDLE);
             return;
         }
 
-        Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Editar usuário");
-
-        TextField nameField = new TextField("Nome");
-        nameField.setWidthFull();
-        nameField.setValue(selected.getName() != null ? selected.getName() : "");
-
-        EmailField emailField = new EmailField("E-mail");
-        emailField.setWidthFull();
-        emailField.setValue(selected.getEmail() != null ? selected.getEmail() : "");
-        emailField.setErrorMessage("Informe um e-mail válido");
-
-        MultiSelectComboBox<Company> companiesField = new MultiSelectComboBox<>("Empresa(s)");
-        companiesField.setWidthFull();
-        companiesField.setItemLabelGenerator(Company::getName);
-
         try {
-            List<Company> allCompanies = companyService.listAll();
-            companiesField.setItems(allCompanies);
+            AppUser selected = userService.findByIdOrThrow(selectedRow.getUserId());
 
-            var choices = userCompanyService.companyChoicesFor(selected.getId());
-            var currentCompanyIds = choices.stream()
-                    .map(c -> c.id)
-                    .collect(Collectors.toSet());
+            Dialog dialog = new Dialog();
+            dialog.setHeaderTitle("Editar usuário");
 
-            var selectedCompanies = allCompanies.stream()
-                    .filter(c -> currentCompanyIds.contains(c.getId()))
-                    .collect(Collectors.toSet());
+            TextField nameField = new TextField("Nome");
+            nameField.setWidthFull();
+            nameField.setValue(selected.getName() != null ? selected.getName() : "");
 
-            companiesField.setValue(selectedCompanies);
-        } catch (SQLException ex) {
+            EmailField emailField = new EmailField("E-mail");
+            emailField.setWidthFull();
+            emailField.setValue(selected.getEmail() != null ? selected.getEmail() : "");
+            emailField.setErrorMessage("Informe um e-mail válido");
+
+            dialog.add(nameField, emailField);
+
+            Button save = new Button("Salvar", ev -> {
+                String newName = trimOrNull(nameField.getValue());
+                String newEmail = trimOrNull(emailField.getValue());
+
+                if (newName == null || newName.isBlank()) {
+                    Notification.show("Nome é obrigatório.", 3000, Notification.Position.MIDDLE);
+                    return;
+                }
+                if (newEmail == null || newEmail.isBlank() || emailField.isInvalid()) {
+                    Notification.show("Informe um e-mail válido.", 3000, Notification.Position.MIDDLE);
+                    return;
+                }
+
+                try {
+                    selected.setName(newName);
+                    selected.setEmail(newEmail);
+                    userService.updateBasics(selected);
+
+                    Notification.show("Usuário atualizado com sucesso.", 3000, Notification.Position.MIDDLE)
+                            .addThemeNames("success");
+
+                    dialog.close();
+                    reloadGrid();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Notification.show("Erro ao atualizar usuário: " + ex.getMessage(),
+                                    5000, Notification.Position.MIDDLE)
+                            .addThemeNames("error");
+                }
+            });
+            save.addThemeNames("success");
+
+            Button cancel = new Button("Cancelar", ev -> dialog.close());
+            dialog.getFooter().add(cancel, save);
+            dialog.open();
+
+        } catch (Exception ex) {
             ex.printStackTrace();
-            Notification.show("Falha ao carregar empresas: " + ex.getMessage(),
+            Notification.show("Erro ao carregar usuário: " + ex.getMessage(),
                             5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
-
-        dialog.add(nameField, emailField, companiesField);
-
-        Button save = new Button("Salvar", ev -> {
-            String newName = trimOrNull(nameField.getValue());
-            String newEmail = trimOrNull(emailField.getValue());
-
-            if (newName == null || newName.isBlank()) {
-                Notification.show("Nome é obrigatório.", 3000, Notification.Position.MIDDLE);
-                return;
-            }
-            if (newEmail == null || newEmail.isBlank() || emailField.isInvalid()) {
-                Notification.show("Informe um e-mail válido.", 3000, Notification.Position.MIDDLE);
-                return;
-            }
-
-            try {
-                selected.setName(newName);
-                selected.setEmail(newEmail);
-                userService.updateBasics(selected);
-
-                var newCompanyIds = companiesField.getSelectedItems().stream()
-                        .map(Company::getId)
-                        .collect(Collectors.toSet());
-
-                long actingUserId;
-                try {
-                    actingUserId = currentUserService.requireUserId();
-                } catch (Exception ex) {
-                    actingUserId = selected.getId();
-                }
-
-                userCompanyService.replaceCompaniesForUser(actingUserId, selected.getId(), newCompanyIds);
-
-                Notification.show("Usuário atualizado com sucesso.", 3000, Notification.Position.MIDDLE)
-                        .addThemeNames("success");
-
-                dialog.close();
-                reloadGrid();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao atualizar usuário: " + ex.getMessage(),
-                                5000, Notification.Position.MIDDLE)
-                        .addThemeNames("error");
-            }
-        });
-        save.addThemeNames("success");
-
-        Button cancel = new Button("Cancelar", ev -> dialog.close());
-
-        dialog.getFooter().add(cancel, save);
-        dialog.open();
     }
 
     private void onDeleteSelected() {
-        AppUser selected = grid.asSingleSelect().getValue();
-        if (selected == null || selected.getId() == null) {
+        if (!currentCompanyService.isAdmin()) {
+            Notification.show("Ação permitida apenas para administradores.", 3000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            return;
+        }
+
+        CompanyUserRow selectedRow = grid.asSingleSelect().getValue();
+        if (selectedRow == null) {
             Notification.show("Selecione um usuário.", 3000, Notification.Position.MIDDLE);
             return;
         }
 
         try {
-            userService.deleteById(selected.getId());
+            userService.deleteById(selectedRow.getUserId());
             Notification.show("Usuário removido com sucesso.", 3000, Notification.Position.MIDDLE)
                     .addThemeNames("success");
             reloadGrid();

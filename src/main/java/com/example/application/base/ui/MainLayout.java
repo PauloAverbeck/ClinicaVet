@@ -34,6 +34,8 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
     private final SideNav nav;
     private final Div centerInfo;
     private final Button logoutBtn;
+    private SideNavItem manageCompanyUsersItem;
+
 
     public MainLayout(CurrentUserService currentUserService,
                       AppUserService appUserService,
@@ -129,9 +131,11 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
         company.addItem(
                 new SideNavItem("Empresas", "companies", VaadinIcon.BUILDING.create()),
                 new SideNavItem("Nova empresa", "company/new", VaadinIcon.PLUS_CIRCLE.create()),
-                new SideNavItem("Selecionar empresa", "company/select", VaadinIcon.CHECK.create()),
-                new SideNavItem("Gerenciar usuários", "company/users", VaadinIcon.USERS.create())
+                new SideNavItem("Selecionar empresa", "company/select", VaadinIcon.CHECK.create())
         );
+        manageCompanyUsersItem = new SideNavItem("Gerenciar usuários", "company/users", VaadinIcon.USERS.create());
+        company.addItem(manageCompanyUsersItem);
+
         nav.addItem(company);
 
         SideNavItem registration = new SideNavItem("Cadastros");
@@ -143,13 +147,14 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
                 new SideNavItem("Agenda", "agenda", VaadinIcon.CALENDAR.create())
         );
         nav.addItem(registration);
-
+        updateAdminVisibility();
         return nav;
     }
 
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
         updateForLoginState();
+        updateAdminVisibility();
     }
 
     /** Esconde/mostra navbar + drawer e info central conforme esteja logado ou não. */
@@ -169,6 +174,12 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
             centerInfo.getElement().setProperty("innerHTML", "");
             centerInfo.setVisible(false);
         }
+    }
+
+    private void updateAdminVisibility() {
+        if (manageCompanyUsersItem == null) return;
+        boolean admin = currentCompanyService.hasSelection() && currentCompanyService.isAdmin();
+        manageCompanyUsersItem.setVisible(admin);
     }
 
     private String buildCenterInfoText() {

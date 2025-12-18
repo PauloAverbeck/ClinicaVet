@@ -77,13 +77,19 @@ public class AppUserService {
     }
 
     public List<AppUser> listAll() throws SQLException {
-        serviceGuard.requireAdmin();
+        serviceGuard.requireCompanyId();
         return repo.listAll();
     }
 
     public Optional<AppUser> findById(long id) throws SQLException {
         serviceGuard.requireAdmin();
         return repo.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public AppUser findByIdOrThrow(long id) throws SQLException {
+        return repo.findById(id)
+                .orElseThrow(() -> new IllegalStateException("Usuário não encontrado. id=" + id));
     }
 
     public Optional<AppUser> findByEmail(String email) throws SQLException {

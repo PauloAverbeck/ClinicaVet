@@ -60,7 +60,12 @@ public class CompanyUsersView extends Main implements BeforeEnterObserver {
 
         if (!currentUserService.isLoggedIn()) return;
         if (!currentCompanyService.hasSelection()) return;
-        if (!isCurrentUserAdminSafely()) return;
+        if (!isCurrentUserAdminSafely()) {
+            Notification.show("Acesso restrito a administradores da empresa.",
+                            3000, Notification.Position.MIDDLE)
+                    .addThemeNames("error");
+            event.rerouteTo("users");
+        };
 
         updateHeader();
         reloadGrid();

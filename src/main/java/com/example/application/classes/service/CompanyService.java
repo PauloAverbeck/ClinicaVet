@@ -48,13 +48,7 @@ public class CompanyService {
             long companyId = companyRepository.insert(company)
                     .orElseThrow(() -> new SQLException("Falha ao inserir empresa."));
 
-            boolean isFirst = userCompanyService.linksOfUser(userId).isEmpty();
-            if (isFirst) {
-                userCompanyService.linkAsAdmin(userId, userId, companyId);
-            } else {
-                userCompanyService.linkMember(userId, userId, companyId);
-            }
-
+            userCompanyService.linkAsAdmin(userId, userId, companyId);
             return companyId;
 
         } catch (SQLException ex) {
@@ -87,11 +81,13 @@ public class CompanyService {
 
     @Transactional
     public void updateBasics(Company company) throws SQLException {
-        serviceGuard.requireAdmin();
 
         if (company == null || company.getId() <= 0) {
             throw new IllegalArgumentException("Empresa inválida para atualização.");
         }
+
+        serviceGuard.requireSelectedCompanyEquals(company.getId());
+        serviceGuard.requireAdminOfCompany(company.getId());
 
         company.setName(normalizeName(company.getName()));
         company.setDocument(normalizeDocument(company.getDocumentType(), company.getDocument()));
@@ -117,7 +113,12 @@ public class CompanyService {
 
     @Transactional
     public void deleteById(long id) throws SQLException {
-        serviceGuard.requireAdmin();
+        if (id <= 0) {
+            throw new IllegalArgumentException("ID inválido para remoção.");
+        }
+
+        serviceGuard.requireSelectedCompanyEquals(id);
+        serviceGuard.requireAdminOfCompany(id);
 
         boolean ok = companyRepository.softDeleteById(id);
         if (!ok) {

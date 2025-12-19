@@ -39,6 +39,7 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
     private final Button newBtn = new Button("Novo Atendimento");
     private final Button editBtn = new Button("Editar");
     private final Button deleteBtn = new Button("Remover");
+    private final Button returnBtn = new Button("Voltar");
 
     private final ViewToolbar header = new ViewToolbar("Atendimentos");
 
@@ -145,6 +146,7 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
         newBtn.addThemeNames("primary");
         editBtn.addThemeNames("primary");
         deleteBtn.addThemeNames("error");
+        returnBtn.addThemeNames("tertiary");
 
         editBtn.setEnabled(false);
         deleteBtn.setEnabled(false);
@@ -158,8 +160,9 @@ public class AttendanceListView extends Main implements BeforeEnterObserver {
         newBtn.addClickListener(e -> onNew());
         editBtn.addClickListener(e -> onEdit());
         deleteBtn.addClickListener(e -> onDelete());
+        returnBtn.addClickListener(e -> UI.getCurrent().navigate("pets"));
 
-        HorizontalLayout actions = new HorizontalLayout(newBtn, editBtn, deleteBtn);
+        HorizontalLayout actions = new HorizontalLayout(newBtn, editBtn, deleteBtn, returnBtn);
         actions.setPadding(true);
         add(actions);
     }

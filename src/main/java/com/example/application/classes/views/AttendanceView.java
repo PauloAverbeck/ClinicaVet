@@ -13,6 +13,7 @@ import com.vaadin.flow.component.datetimepicker.DateTimePicker;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.*;
@@ -37,6 +38,7 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
     private final TextArea descriptionArea = new TextArea("Descrição");
     private final ComboBox<Pet> petComboBox = new ComboBox<>("Pet");
     private final Button saveBtn = new Button("Salvar");
+    private final Button returnBtn = new Button("Voltar");
 
     private Long attendanceId;
     private Long preselectedPetId;
@@ -80,7 +82,31 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
 
         saveBtn.addThemeNames("primary");
         saveBtn.addClickListener(e -> onSave());
-        content.add(saveBtn);
+        returnBtn.addThemeNames("tertiary");
+        returnBtn.addClickListener(e -> {
+            if (editMode && attendanceId != null) {
+                Optional<Attendance> opt;
+                try {
+                    opt = attendanceService.findById(attendanceId);
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+                if (opt.isPresent()) {
+                    long petId = opt.get().getAnimalId();
+                    UI.getCurrent().navigate("pets/:id/attendances".replace(":id", String.valueOf(petId)));
+                    return;
+                }
+            } else {
+                if (preselectedPetId != null) {
+                    UI.getCurrent().navigate("pets/:id/attendances".replace(":id", String.valueOf(preselectedPetId)));
+                    return;
+                }
+            }
+        });
+
+        var buttons = new HorizontalLayout();
+        buttons.add(saveBtn, returnBtn);
+        content.add(buttons);
     }
 
     @Override

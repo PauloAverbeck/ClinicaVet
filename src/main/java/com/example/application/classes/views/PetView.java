@@ -13,6 +13,7 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.Notification.Position;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
@@ -40,6 +41,7 @@ public class PetView extends Main implements BeforeEnterObserver {
     private final DatePicker birthDatePicker = new DatePicker("Data de Nascimento");
     private final TextArea notesArea = new TextArea("Notas");
     private final Button saveBtn = new Button("Salvar");
+    private final Button returnBtn = new Button("Voltar");
 
     private Long petId = null;
 
@@ -79,7 +81,12 @@ public class PetView extends Main implements BeforeEnterObserver {
 
         saveBtn.addThemeNames("primary");
         saveBtn.addClickListener(e -> onSave());
-        content.add(saveBtn);
+        returnBtn.addThemeNames("tertiary");
+        returnBtn.addClickListener(e -> UI.getCurrent().navigate("pets"));
+
+        var buttons = new HorizontalLayout();
+        buttons.add(saveBtn, returnBtn);
+        content.add(buttons);
     }
 
     @Override

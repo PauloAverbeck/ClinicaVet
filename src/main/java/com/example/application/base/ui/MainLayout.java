@@ -64,6 +64,7 @@ public final class MainLayout extends AppLayout implements AfterNavigationObserv
             currentCompanyService.clearSelection();
             setDrawerOpened(false);
             UI.getCurrent().navigate("home");
+            UI.getCurrent().getPage().reload();
         });
 
         // container da esquerda (toggle + home)

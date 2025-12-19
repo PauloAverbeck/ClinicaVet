@@ -108,7 +108,7 @@ public class AttendanceRepository {
                SET appointment_at = ?,
                    description    = ?,
                    update_date    = NOW(),
-                   version        = version + 1
+                   version        = a.version + 1
               FROM pet p
              WHERE a.id = ?
                AND a.version = ?

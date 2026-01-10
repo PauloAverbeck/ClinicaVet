@@ -16,6 +16,8 @@ import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -24,6 +26,8 @@ import java.util.Objects;
 @Menu(title = "Criar conta", icon = "la la-user-plus", order = 2)
 @AnonymousAllowed
 public class SignUpView extends VerticalLayout {
+
+    private static final Logger log = LoggerFactory.getLogger(SignUpView.class);
 
     private final AppUserService appUserService;
 
@@ -109,8 +113,8 @@ public class SignUpView extends VerticalLayout {
             Notification.show(ex.getMessage(), 4000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Falha ao criar conta. Tente novamente.", 4000, Notification.Position.MIDDLE)
+            log.error("Erro ao criar conta", ex);
+            Notification.show("Erro ao criar conta. Tente novamente.", 4000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         } finally {
             setLoading(false);

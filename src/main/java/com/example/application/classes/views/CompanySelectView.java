@@ -17,6 +17,8 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -25,6 +27,8 @@ import java.util.List;
 @Route(value = "company/select", layout = MainLayout.class)
 @Menu(title = "Selecionar Empresa", icon = "la la-building", order = 2)
 public class CompanySelectView extends VerticalLayout implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(CompanySelectView.class);
 
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
@@ -71,7 +75,7 @@ public class CompanySelectView extends VerticalLayout implements BeforeEnterObse
             try {
                 loadData();
             } catch (Exception ex) {
-                showError(ex);
+                showError("Erro ao carregar empresas", ex);
             }
         });
 
@@ -114,7 +118,7 @@ public class CompanySelectView extends VerticalLayout implements BeforeEnterObse
 
             loadData();
         } catch (Exception ex) {
-            showError(ex);
+            showError("Erro ao carregar empresas", ex);
         }
     }
 
@@ -159,13 +163,13 @@ public class CompanySelectView extends VerticalLayout implements BeforeEnterObse
             Notification.show("Empresa selecionada: " + selected.name, 2500, Notification.Position.MIDDLE);
             UI.getCurrent().navigate("users");
         } catch (Exception ex) {
-            showError(ex);
+            showError("Erro ao selecionar empresa", ex);
         }
     }
 
-    private void showError(Exception ex) {
-        ex.printStackTrace();
-        Notification.show("Falha: " + ex.getMessage(), 4000, Notification.Position.MIDDLE)
+    private void showError(String message, Exception ex) {
+        log.error(message, ex);
+        Notification.show(message + ".", 4000, Notification.Position.MIDDLE)
                 .addThemeNames("error");
     }
 }

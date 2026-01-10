@@ -18,6 +18,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -28,6 +30,8 @@ import java.util.Objects;
 @RouteAlias(value = "pets/:id/edit", layout = MainLayout.class)
 @Menu(title = "Cadastro de Pet", icon = "la la-paw-plus", order = 11)
 public class PetView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(PetView.class);
 
     private final PetService petService;
     private final ClientService clientService;
@@ -107,8 +111,8 @@ public class PetView extends Main implements BeforeEnterObserver {
         try {
             loadClients();
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar clientes: " + ex.getMessage(), 5000, Position.MIDDLE)
+            log.error("Erro ao carregar clientes", ex);
+            Notification.show("Erro ao carregar clientes.", 5000, Position.MIDDLE)
                     .addThemeNames("error");
             event.rerouteTo("pets");
             return;
@@ -119,8 +123,8 @@ public class PetView extends Main implements BeforeEnterObserver {
             try {
                 loadExistingPet(petId);
             } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao carregar pet: " + ex.getMessage(), 5000, Position.MIDDLE)
+                log.error("Erro ao carregar pet", ex);
+                Notification.show("Erro ao carregar pet.", 5000, Position.MIDDLE)
                         .addThemeNames("error");
                 event.rerouteTo("pets");
             }
@@ -192,12 +196,12 @@ public class PetView extends Main implements BeforeEnterObserver {
             Notification.show(vex.getMessage(), 4000, Position.MIDDLE)
                     .addThemeNames("error");
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao salvar pet: " + ex.getMessage(), 5000, Position.MIDDLE)
+            log.error("Erro ao salvar pet", ex);
+            Notification.show("Erro ao salvar pet.", 5000, Position.MIDDLE)
                     .addThemeNames("error");
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro inesperado ao salvar pet: " + ex.getMessage(), 5000, Position.MIDDLE)
+            log.error("Erro inesperado ao salvar pet", ex);
+            Notification.show("Erro inesperado ao salvar pet.", 5000, Position.MIDDLE)
                     .addThemeNames("error");
         }
     }

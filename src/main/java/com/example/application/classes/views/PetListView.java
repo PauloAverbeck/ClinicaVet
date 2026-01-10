@@ -13,6 +13,8 @@ import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.Objects;
 @Route(value = "pets", layout = MainLayout.class)
 @Menu(title = "Pets", icon = "la la-paw", order = 10)
 public class PetListView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(PetListView.class);
 
     private final PetService petService;
     private final CurrentUserService currentUserService;
@@ -129,8 +133,8 @@ public class PetListView extends Main implements BeforeEnterObserver {
             List<Pet> pets = petService.listAllForCompany();
             grid.setItems(pets);
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar lista de pets: " + ex.getMessage(),
+            log.error("Erro ao carregar lista de pets", ex);
+            Notification.show("Erro ao carregar lista de pets.",
                             5000, Notification.Position.TOP_CENTER)
                     .addThemeNames("error");
             grid.setItems(List.of());
@@ -167,8 +171,8 @@ public class PetListView extends Main implements BeforeEnterObserver {
             attendanceBtn.setEnabled(false);
 
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao remover pet: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+            log.error("Erro ao remover pet", ex);
+            Notification.show("Erro ao remover pet.", 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
     }

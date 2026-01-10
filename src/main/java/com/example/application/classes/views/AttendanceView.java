@@ -17,6 +17,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.Collections;
@@ -28,6 +30,8 @@ import java.util.Optional;
 @Route(value = "attendance/new", layout = MainLayout.class)
 @RouteAlias(value = "attendance/:id/edit", layout = MainLayout.class)
 public class AttendanceView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(AttendanceView.class);
 
     private final PetService petService;
     private final AttendanceService attendanceService;
@@ -165,8 +169,8 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
             }
 
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao preparar tela: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+            log.error("Erro ao preparar tela de atendimento", ex);
+            Notification.show("Erro ao preparar tela de atendimento.", 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             UI.getCurrent().navigate("pets");
         }
@@ -256,12 +260,12 @@ public class AttendanceView extends Main implements BeforeEnterObserver {
             Notification.show(vex.getMessage(), 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao salvar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+            log.error("Erro ao salvar atendimento", ex);
+            Notification.show("Erro ao salvar atendimento.", 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro inesperado ao salvar atendimento: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+            log.error("Erro inesperado ao salvar atendimento", ex);
+            Notification.show("Erro inesperado ao salvar atendimento.", 5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
     }

@@ -14,6 +14,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.Objects;
 @Route(value = "users", layout = MainLayout.class)
 @Menu(title = "Usuários", icon = "la la-users", order = 5)
 public class AppUserView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(AppUserView.class);
 
     private final AppUserService userService;
     private final UserCompanyService userCompanyService;
@@ -129,8 +133,8 @@ public class AppUserView extends Main implements BeforeEnterObserver {
             List<CompanyUserRow> rows = userCompanyService.listCompanyUsers(companyId);
             grid.setItems(rows);
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao listar usuários: " + ex.getMessage(),
+            log.error("Erro ao listar usuários", ex);
+            Notification.show("Erro ao listar usuários.",
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             grid.setItems(List.of());
@@ -191,8 +195,8 @@ public class AppUserView extends Main implements BeforeEnterObserver {
                     dialog.close();
                     reloadGrid();
                 } catch (Exception ex) {
-                    ex.printStackTrace();
-                    Notification.show("Erro ao atualizar usuário: " + ex.getMessage(),
+                    log.error("Erro ao atualizar usuário", ex);
+                    Notification.show("Erro ao atualizar usuário.",
                                     5000, Notification.Position.MIDDLE)
                             .addThemeNames("error");
                 }
@@ -204,8 +208,8 @@ public class AppUserView extends Main implements BeforeEnterObserver {
             dialog.open();
 
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar usuário: " + ex.getMessage(),
+            log.error("Erro ao carregar usuário", ex);
+            Notification.show("Erro ao carregar usuário.",
                             5000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
@@ -230,8 +234,8 @@ public class AppUserView extends Main implements BeforeEnterObserver {
                     .addThemeNames("success");
             reloadGrid();
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao remover usuário: " + ex.getMessage(),
+            log.error("Erro ao remover usuário", ex);
+            Notification.show("Erro ao remover usuário.",
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }

@@ -18,12 +18,16 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @PageTitle("Cliente")
 @Route(value = "clients/new", layout = MainLayout.class)
 @RouteAlias(value = "clients/:id/edit", layout = MainLayout.class)
 @Menu(title = "Cadastro de Cliente", icon = "la la-user-plus", order = 9)
 public class ClientView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientView.class);
 
     private final ClientService clientService;
     private final CurrentUserService currentUserService;
@@ -146,8 +150,8 @@ public class ClientView extends Main implements BeforeEnterObserver {
             try {
                 loadExistingClient();
             } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao carregar cliente: " + ex.getMessage(), 5000, Notification.Position.MIDDLE)
+                log.error("Erro ao carregar cliente", ex);
+                Notification.show("Erro ao carregar cliente.", 5000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
                 UI.getCurrent().navigate("clients");
             }
@@ -249,7 +253,7 @@ public class ClientView extends Main implements BeforeEnterObserver {
             if (complementField.isEmpty()) complementField.setValue(nonNull(dto.getComplemento()));
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Erro ao consultar CEP", ex);
             Notification.show("Erro ao consultar CEP.", 3000, Notification.Position.TOP_CENTER)
                     .addThemeNames("error");
         }
@@ -302,8 +306,8 @@ public class ClientView extends Main implements BeforeEnterObserver {
         } catch (ClientValidationException vex) {
             showError(vex.getMessage());
         } catch (Exception ex) {
-            ex.printStackTrace();
-            showError("Erro ao salvar cliente: " + ex.getMessage());
+            log.error("Erro ao salvar cliente", ex);
+            showError("Erro ao salvar cliente.");
         }
     }
 

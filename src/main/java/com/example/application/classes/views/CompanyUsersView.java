@@ -16,6 +16,8 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -25,6 +27,8 @@ import java.util.Objects;
 @Route(value = "company/users", layout = MainLayout.class)
 @Menu(title = "Usuários da Empresa", icon = "la la-users", order = 7)
 public class CompanyUsersView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(CompanyUsersView.class);
 
     private final CurrentUserService currentUserService;
     private final CurrentCompanyService currentCompanyService;
@@ -146,8 +150,8 @@ public class CompanyUsersView extends Main implements BeforeEnterObserver {
             List<CompanyUserRow> companyUsers = userCompanyService.listCompanyUsers(companyId);
             grid.setItems(companyUsers);
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao listar usuários: " + ex.getMessage(),
+            log.error("Erro ao listar usuários", ex);
+            Notification.show("Erro ao listar usuários.",
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             grid.setItems(List.of());
@@ -165,8 +169,8 @@ public class CompanyUsersView extends Main implements BeforeEnterObserver {
 
             reloadGrid();
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao atualizar permissão de admin: " + ex.getMessage(),
+            log.error("Erro ao atualizar permissão de admin", ex);
+            Notification.show("Erro ao atualizar permissão de admin.",
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
@@ -183,8 +187,8 @@ public class CompanyUsersView extends Main implements BeforeEnterObserver {
 
             reloadGrid();
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao remover usuário: " + ex.getMessage(),
+            log.error("Erro ao remover usuário", ex);
+            Notification.show("Erro ao remover usuário.",
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
         }
@@ -227,8 +231,8 @@ public class CompanyUsersView extends Main implements BeforeEnterObserver {
                                 6000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
             } catch (SQLException ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao adicionar usuário: " + ex.getMessage(),
+                log.error("Erro ao adicionar usuário", ex);
+                Notification.show("Erro ao adicionar usuário.",
                                 6000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
             }

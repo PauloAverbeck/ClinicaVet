@@ -14,6 +14,8 @@ import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -23,6 +25,8 @@ import java.util.Objects;
 @Route(value = "clients", layout = MainLayout.class)
 @Menu(title = "Clientes", icon = "la la-users", order = 8)
 public class ClientListView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(ClientListView.class);
 
     private final ClientService clientService;
     private final CurrentUserService currentUserService;
@@ -98,8 +102,8 @@ public class ClientListView extends Main implements BeforeEnterObserver {
             List<Client> clients = clientService.listAllForCompany();
             grid.setItems(clients);
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao carregar clientes: " + ex.getMessage(),
+            log.error("Erro ao carregar clientes", ex);
+            Notification.show("Erro ao carregar clientes.",
                     5000, Notification.Position.MIDDLE).addThemeNames("error");
             grid.setItems(List.of());
         }
@@ -134,8 +138,8 @@ public class ClientListView extends Main implements BeforeEnterObserver {
             deleteBtn.setEnabled(false);
 
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao remover cliente: " + ex.getMessage(),
+            log.error("Erro ao remover cliente", ex);
+            Notification.show("Erro ao remover cliente.",
                     5000, Notification.Position.MIDDLE).addThemeNames("error");
         }
     }

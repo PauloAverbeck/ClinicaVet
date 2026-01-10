@@ -22,6 +22,8 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -31,6 +33,8 @@ import java.util.Objects;
 @Menu(title = "Início", icon = "la la-home", order = 0)
 @AnonymousAllowed
 public class HomeView extends VerticalLayout {
+
+    private static final Logger log = LoggerFactory.getLogger(HomeView.class);
 
     private final AppUserService appUserService;
     private final CurrentUserService currentUserService;
@@ -174,8 +178,8 @@ public class HomeView extends VerticalLayout {
                 case INVALID -> Notification.show("E-mail ou senha inválidos.", 3000, Notification.Position.MIDDLE);
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Falha ao autenticar.", 3500, Notification.Position.MIDDLE);
+            log.error("Erro ao autenticar usuário", ex);
+            Notification.show("Erro ao autenticar.", 3500, Notification.Position.MIDDLE);
         } finally {
             setLoading(false);
             updateUIState();

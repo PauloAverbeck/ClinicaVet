@@ -17,6 +17,8 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -24,6 +26,8 @@ import java.util.Objects;
 @Route(value = "company/new", layout = MainLayout.class)
 @Menu(title = "Cadastrar Empresa", icon = "la la-building", order = 6)
 public class CompanyView extends VerticalLayout implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(CompanyView.class);
 
     private final CompanyService companyService;
     private final CurrentUserService currentUserService;
@@ -126,8 +130,8 @@ public class CompanyView extends VerticalLayout implements BeforeEnterObserver {
 
             UI.getCurrent().navigate("company/select");
         } catch (Exception ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao criar empresa: " + ex.getMessage(), 7000, Notification.Position.TOP_CENTER)
+            log.error("Erro ao criar empresa", ex);
+            Notification.show("Erro ao criar empresa.", 7000, Notification.Position.TOP_CENTER)
                     .addThemeNames("error");
         }
     }

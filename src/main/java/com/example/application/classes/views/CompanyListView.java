@@ -17,6 +17,8 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -26,6 +28,8 @@ import java.util.Objects;
 @Route(value = "companies", layout = MainLayout.class)
 @Menu(title = "Empresas", icon = "la la-building", order = 4)
 public class CompanyListView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(CompanyListView.class);
 
     private final CompanyService companyService;
     private final CurrentUserService currentUserService;
@@ -123,8 +127,8 @@ public class CompanyListView extends Main implements BeforeEnterObserver {
             List<Company> companies = companyService.listAll();
             grid.setItems(companies);
         } catch (SQLException ex) {
-            ex.printStackTrace();
-            Notification.show("Erro ao listar empresas: " + ex.getMessage(),
+            log.error("Erro ao listar empresas", ex);
+            Notification.show("Erro ao listar empresas.",
                             6000, Notification.Position.MIDDLE)
                     .addThemeNames("error");
             grid.setItems(List.of());
@@ -190,8 +194,8 @@ public class CompanyListView extends Main implements BeforeEnterObserver {
                 dialog.close();
                 reloadGrid();
             } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao atualizar empresa: " + ex.getMessage(),
+                log.error("Erro ao atualizar empresa", ex);
+                Notification.show("Erro ao atualizar empresa.",
                                 5000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
             }
@@ -222,8 +226,8 @@ public class CompanyListView extends Main implements BeforeEnterObserver {
                 confirm.close();
                 reloadGrid();
             } catch (Exception ex) {
-                ex.printStackTrace();
-                Notification.show("Erro ao remover empresa: " + ex.getMessage(),
+                log.error("Erro ao remover empresa", ex);
+                Notification.show("Erro ao remover empresa.",
                                 6000, Notification.Position.MIDDLE)
                         .addThemeNames("error");
             }

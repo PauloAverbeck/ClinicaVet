@@ -12,6 +12,8 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.router.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
@@ -21,6 +23,8 @@ import java.util.List;
 @Route(value = "agenda", layout = MainLayout.class)
 @Menu(title = "Agenda", icon = "vaadin:calendar")
 public class AgendaView extends Main implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(AgendaView.class);
 
     private final AgendaService agendaService;
     private final CurrentCompanyService currentCompanyService;
@@ -110,8 +114,8 @@ public class AgendaView extends Main implements BeforeEnterObserver {
             allItems = agendaService.listCurrentCompanyAgenda();
             applyFilter();
         } catch (Exception e) {
-            e.printStackTrace();
-            Notification.show("Erro ao carregar dados da agenda: " + e.getMessage(),
+            log.error("Erro ao carregar dados da agenda", e);
+            Notification.show("Erro ao carregar dados da agenda.",
                     5000, Notification.Position.MIDDLE).addThemeNames("error");
             allItems = Collections.emptyList();
             grid.setItems(allItems);
